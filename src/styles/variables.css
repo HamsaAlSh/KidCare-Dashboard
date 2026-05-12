@@ -1,0 +1,23 @@
+:root {
+  /* Colors from sign up.png */
+  --primary-blue: #2196F3;       /* اللون الأزرق الأساسي للزر */
+  --soft-blue: #E3F2FD;          /* خلفية الحقول أو لمسات خفيفة */
+  --text-dark: #0D47A1;          /* لون العناوين والنصوص الغامقة */
+  --text-gray: #757575;          /* لون الـ Placeholders */
+  --bg-light: #F8FAFC;           /* خلفية الصفحة الأساسية */
+  --white: #ffffff;
+  --border-color: #E0E0E0;
+  
+  /* Shared Styles */
+  --radius-lg: 16px;             /* نفس استدارة الكرت في الصورة */
+  --radius-md: 12px;             /* استدارة الحقول والأزرار */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='dark'] {
+  --bg-light: #0f172a;
+  --white: #1e293b;
+  --text-dark: #f1f5f9;
+  --border-color: #334155;
+  /* سنبقي على الأزرق الأساسي لأنه يتناسب مع الوضع الليلي أيضاً */
+}
