@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import './LoginForm.css';
+import logoImage from '../assets/logo.jpg';
 
 const LoginForm = ({ onLogin }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -16,14 +17,20 @@ const LoginForm = ({ onLogin }) => {
 
   const handleAction = (e, role) => {
     e.preventDefault();
-    if (validate()) onLogin(role);
+    if (validate()) {
+      
+      onLogin({ 
+        name: role === 'admin' ? 'Admin User' : 'Receptionist', 
+        role: role 
+      });
+    }
   };
 
   return (
     <div className="login-wrapper">
       <div className="bg-decoration">
-         <div className="soft-circle blue-soft"></div>
-         <div className="soft-circle light-soft"></div>
+          <div className="soft-circle blue-soft"></div>
+          <div className="soft-circle light-soft"></div>
       </div>
 
       <motion.div 
@@ -31,7 +38,7 @@ const LoginForm = ({ onLogin }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        {/* حاوية الـ 12 شكلاً المتبعثرة */}
+        
         <div className="extra-shapes-layer">
           <span className="scattered-shape s1">★</span>
           <span className="scattered-shape c1"></span>
@@ -46,12 +53,11 @@ const LoginForm = ({ onLogin }) => {
           <span className="scattered-shape s6">★</span>
           <span className="scattered-shape c6"></span>
         </div>
-
         <div className="header-section">
-          <div className="app-logo">
-             <i className="fa-solid fa-house-medical"></i>
+          <div className="app-logo-container">
+              <img src={logoImage} alt="Logo" className="app-custom-logo" />
           </div>
-          <h1>Welcome Back</h1>
+          <h1>Welcome</h1>
           <p>Login to your KidCare account</p>
         </div>
 

@@ -1,13 +1,14 @@
 import React, { useContext } from 'react';
-import LoginForm from '../features/auth/components/LoginForm';
+import LoginForm from "../features/LoginForm";
 import { AuthContext } from '../context/AuthContext';
 
 const LoginPage = () => {
+  
   const { login } = useContext(AuthContext);
 
-  const handleLogin = (role) => {
-    // محاكاة تسجيل دخول بناءً على الزر المضغوط
-    login({ name: 'User', role: role });
+ 
+  const handleLogin = (userData) => {
+    login(userData); 
   };
 
   return (
@@ -18,6 +19,7 @@ const LoginPage = () => {
       height: '100vh',
       backgroundColor: 'var(--bg-light)' 
     }}>
+      {}
       <LoginForm onLogin={handleLogin} />
     </div>
   );

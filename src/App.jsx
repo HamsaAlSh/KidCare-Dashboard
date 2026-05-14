@@ -1,22 +1,44 @@
 import React, { useContext } from 'react';
 import { AuthContext } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
+import AdminDashboard from './features/admin/pages/AdminDashboard.jsx';
 
 function App() {
-  // استخدام useContext لمعرفة حالة المستخدم الحالية
-  const { user } = useContext(AuthContext);
+ 
+  const { user, logout } = useContext(AuthContext);
 
   return (
     <div className="app">
-      {/* إذا لم يكن هناك مستخدم مسجل، اعرض صفحة تسجيل الدخول */}
+      {}
       {!user ? (
         <LoginPage />
       ) : (
-        // هنا سنعرض الداشبورد لاحقاً بناءً على الرتبة
-        <div style={{ padding: '20px' }}>
-          <h1>Welcome, {user.name}</h1>
-          <p>Role: {user.role}</p>
-          <button onClick={() => window.location.reload()}>Logout (Reload for now)</button>
+        
+        <div className="main-container">
+          {user.role === 'admin' ? (
+          
+            <AdminDashboard />
+          ) : (
+            
+            <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'Public Sans' }}>
+              <h1>Welcome, {user.name}</h1>
+              <p>Role: {user.role}</p>
+              <p>Reception Dashboard is coming soon...</p>
+              <button 
+                onClick={logout} 
+                style={{
+                  padding: '10px 20px', 
+                  backgroundColor: '#2196F3', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '10px',
+                  cursor: 'pointer'
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,3 @@
-/* 1. الحاوية الكبرى والخلفية */
 .login-wrapper {
   position: relative;
   width: 100%;
@@ -11,7 +10,6 @@
   font-family: 'Public Sans', sans-serif;
 }
 
-/* 2. الأشكال الدائرية الناعمة في الخلفية (Blobs) */
 .bg-decoration .soft-circle {
   position: absolute;
   border-radius: 50%;
@@ -19,10 +17,10 @@
   z-index: 0;
   opacity: 0.6;
 }
+
 .blue-soft { width: 500px; height: 500px; background: #E3F2FD; top: -150px; right: -100px; }
 .light-soft { width: 400px; height: 400px; background: #E1F5FE; bottom: -80px; left: -80px; }
 
-/* 3. البطاقة الرئيسية (الخلفية البيضاء) */
 .login-card-v2 {
   background: white;
   width: 620px; 
@@ -33,13 +31,12 @@
   z-index: 1;
 }
 
-/* 4. طبقة الأشكال الـ 12 المتبعثرة */
 .extra-shapes-layer {
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
   pointer-events: none;
-  z-index: 0; /* خلف محتوى البطاقة */
+  z-index: 0; 
 }
 
 .scattered-shape {
@@ -48,7 +45,6 @@
   transition: all 0.8s ease-in-out;
 }
 
-/* توزيع النجوم الـ 6 */
 .s1 { top: 5%; right: 10%; color: #FFD700; font-size: 38px; transform: rotate(20deg); }
 .s2 { bottom: 20%; left: 5%; color: #4FC3F7; font-size: 30px; transform: rotate(-15deg); }
 .s3 { top: 25%; left: 12%; color: #BA68C8; font-size: 22px; }
@@ -56,7 +52,6 @@
 .s5 { top: -20px; left: 40%; color: #81C784; font-size: 24px; }
 .s6 { bottom: 5%; right: 30%; color: #FFB74D; font-size: 32px; transform: rotate(-10deg); }
 
-/* توزيع الدوائر الـ 6 */
 .c1 { top: 45%; left: -35px; width: 28px; height: 28px; background: #F06292; border-radius: 50%; }
 .c2 { bottom: 15%; right: -15px; width: 22px; height: 22px; background: #FFB74D; border-radius: 50%; }
 .c3 { top: 15%; right: 40%; width: 14px; height: 14px; background: #4DD0E1; border-radius: 50%; }
@@ -64,23 +59,21 @@
 .c5 { top: 60%; right: 5%; width: 12px; height: 12px; background: #9575CD; border-radius: 50%; }
 .c6 { bottom: -20px; left: 50%; width: 20px; height: 20px; background: #FFD54F; border-radius: 50%; }
 
-/* حركة الأشكال عند الحوم فوق البطاقة */
 .login-card-v2:hover .scattered-shape {
   transform: translateY(-20px) scale(1.1) rotate(10deg);
   opacity: 0.6;
 }
 
-/* 5. ترويسة البطاقة */
 .header-section {
   text-align: center;
   margin-bottom: 80px;
   position: relative;
   z-index: 2;
 }
+
 .app-logo { color: #2196F3; font-size: 55px; margin-bottom: 20px; }
 .header-section h1 { color: #0D47A1; font-size: 32px; margin-bottom: 10px; }
 
-/* 6. تنسيق الحقول */
 .input-box { margin-bottom: 30px; position: relative; z-index: 2; }
 .input-box label { display: block; font-weight: 600; color: #1E293B; margin-bottom: 12px; }
 
@@ -110,10 +103,9 @@
   font-size: 17px;
 }
 
-/* 7. الأزرار (Admin & Reception) */
 .btn-primary, .btn-outline {
   position: relative;
-  z-index: 2; /* فوق الأشكال */
+  z-index: 2; 
   width: 100%;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -122,7 +114,6 @@
   align-items: center;
 }
 
-/* زر الأدمن */
 .btn-primary {
   padding: 20px;
   background: #2196F3;
@@ -141,7 +132,6 @@
   box-shadow: 0 8px 25px rgba(33, 150, 243, 0.3);
 }
 
-/* زر الريسبشن (المُصلح) */
 .btn-outline {
   padding: 18px;
   background: white; 
@@ -160,6 +150,22 @@
   box-shadow: 0 8px 25px rgba(33, 150, 243, 0.2);
 }
 
-/* رسائل الخطأ */
 .error-border { border-color: #EF4444 !important; }
 .error-msg { color: #EF4444; font-size: 13px; margin-top: 8px; display: block; font-weight: 500; }
+
+.app-logo-container {
+  margin-bottom: 25px; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-custom-logo {
+  width: 120px;  
+  height: auto;  
+  object-fit: contain;
+}
+
+.app-custom-logo:hover {
+  transform: scale(1.05) rotate(-3deg);
+}

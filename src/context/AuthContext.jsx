@@ -6,10 +6,15 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   const login = (userData) => {
-    setUser(userData); // userData = { name: 'Admin', role: 'admin' }
+    // التحديث هنا يضمن تخزين الكائن الكامل المستلم من LoginForm
+    // userData سيعبر عن { name: '...', role: '...' }
+    setUser(userData); 
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    // تنظيف حالة المستخدم عند تسجيل الخروج
+    setUser(null);
+  };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
