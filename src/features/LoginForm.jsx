@@ -2,27 +2,40 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import './LoginForm.css';
 import logoImage from '../assets/logo.jpg';
+import { useAuth } from '../context/AuthContext';
 
-const LoginForm = ({ onLogin }) => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+const LoginForm = () => {
+  const [formData, setFormData] = useState({ phone_number: '', password: '' });
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { login } = useAuth();
 
   const validate = () => {
     let newErrors = {};
-    if (!formData.email.endsWith('@gmail.com')) newErrors.email = "Must end with @gmail.com";
+    if (!formData.phone_number.startsWith('963')) newErrors.phone_number = "Must start with 963";
     if (!formData.password) newErrors.password = "Password is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAction = (e, role) => {
+  const handleAction = async (e, role) => {
     e.preventDefault();
-    if (validate()) {
-      
-      onLogin({ 
-        name: role === 'admin' ? 'Admin User' : 'Receptionist', 
-        role: role 
-      });
+    setApiError('');
+    
+    if (!validate()) return;
+    
+    setIsLoading(true);
+    
+    const result = await login(formData.phone_number, formData.password);
+    
+    setIsLoading(false);
+    
+    if (result.success) {
+      alert(`Login successful! Role: ${role}`);
+    } else {
+      setApiError(result.message);
     }
   };
 
@@ -62,17 +75,20 @@ const LoginForm = ({ onLogin }) => {
         </div>
 
         <form className="form-section">
+          {apiError && <div className="error-msg" style={{textAlign: 'center', marginBottom: '10px'}}>{apiError}</div>}
+          
           <div className="input-box">
-            <label>Email Address</label>
-            <div className={`input-field ${errors.email ? 'error-border' : ''}`}>
+            <label>Phone Number</label>
+            <div className={`input-field ${errors.phone_number ? 'error-border' : ''}`}>
               <input 
-                type="email" 
-                placeholder="example@gmail.com" 
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                type="tel" 
+                placeholder="example 963*********" 
+                value={formData.phone_number}
+                onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
               />
               <i className="fa-regular fa-envelope"></i>
             </div>
-            {errors.email && <span className="error-msg">{errors.email}</span>}
+            {errors.phone_number && <span className="error-msg">{errors.phone_number}</span>}
           </div>
 
           <div className="input-box">
@@ -81,6 +97,7 @@ const LoginForm = ({ onLogin }) => {
               <input 
                 type="password" 
                 placeholder="••••••••" 
+                value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
               <i className="fa-solid fa-lock"></i>
@@ -90,12 +107,12 @@ const LoginForm = ({ onLogin }) => {
 
           <div className="login-spacer"></div>
 
-          <button className="btn-primary" onClick={(e) => handleAction(e, 'admin')}>
-            Login as Admin
+          <button className="btn-primary" onClick={(e) => handleAction(e, 'admin')} disabled={isLoading}>
+            {isLoading ? 'Loading...' : 'Login as Admin'}
           </button>
 
-          <button className="btn-outline" onClick={(e) => handleAction(e, 'reception')}>
-            Login as Reception
+          <button className="btn-outline" onClick={(e) => handleAction(e, 'reception')} disabled={isLoading}>
+            {isLoading ? 'Loading...' : 'Login as Reception'}
           </button>
         </form>
       </motion.div>
