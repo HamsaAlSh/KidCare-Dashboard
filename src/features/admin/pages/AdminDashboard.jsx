@@ -13,6 +13,7 @@ import api from "../../../api/axios";
 import Sidebar from "../components/Sidebar";
 import AddDoctorModal from "../components/AddDoctorModal";
 import SmartInsights from "../components/SmartInsights";
+import DoctorProfileModal from "../components/DoctorProfileModal";  
 import DashboardTab from "../tabs/DashboardTab";
 import DoctorsTab from "../tabs/DoctorsTab";
 import DepartmentsTab from "../tabs/DepartmentsTab";
@@ -104,9 +105,10 @@ const AdminDashboard = () => {
   const [selectedDoctorId, setSelectedDoctorId] = useState(1);
   const [showInsights, setShowInsights] = useState(false);
   const [insightCount, setInsightCount] = useState(0);
-
+  const [allDoctorsForStats, setAllDoctorsForStats] = useState([]);
   const [departmentsData, setDepartmentsData] = useState(staticDepartmentsData);
-
+  const [selectedDoctor, setSelectedDoctor] = useState(null);  
+  const [showDoctorProfile, setShowDoctorProfile] = useState(false);  
   const [doctorsData, setDoctorsData] = useState(() => {
     const saved = localStorage.getItem('kidcare_doctors');
     return saved ? JSON.parse(saved) : [];
@@ -116,55 +118,124 @@ const AdminDashboard = () => {
     localStorage.setItem('kidcare_doctors', JSON.stringify(doctorsData));
   }, [doctorsData]);
 
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      try {
-        const response = await api.get('/doctors');
-        const fetchedDoctors = response.data?.data || [];
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0
+  });
 
-        const formattedDoctors = fetchedDoctors.map(doc => {
-          const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
-          const avatarUrl = doc.profile_picture
-            ? `${baseUrl}/storage/${doc.profile_picture}`
-            : null;
+  const fetchDoctors = async (page = 1, perPage = 1000) => {
+    try {
+      const response = await api.get(`/doctors?page=${page}&per_page=${perPage}`); 
+      const fetchedDoctors = response.data?.data || [];
+      const paginationData = response.data?.pagination || {};
 
-          return {
-            id: doc.id,
-            name: `Dr. ${doc.first_name} ${doc.last_name}`,
-            specialty: doc.department?.name || 'General',
-            department: doc.department?.name || 'General',
-            status: 'active',
-            patients: doc.patients_count || 0,
-            rating: doc.rating || 0,
-            experience: doc.experience_years || 0,
-            email: doc.email,
-            phone: doc.phone_number,
-            joinDate: doc.created_at ? doc.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-            avatar: avatarUrl || `${doc.first_name?.[0] || ''}${doc.last_name?.[0] || ''}`.toUpperCase(),
-          };
-        });
+      setPagination({
+        current_page: paginationData.current_page || 1,
+        last_page: paginationData.last_page || 1,
+        per_page: paginationData.per_page || 10,
+        total: paginationData.total || 0
+      });
 
-        if (formattedDoctors.length > 0) {
-          setDoctorsData(formattedDoctors);
-        } else if (doctorsData.length === 0) {
-          setDoctorsData(defaultDoctorsData);
-        }
-      } catch (error) {
-        console.error('Failed to fetch doctors from API:', error);
-        if (doctorsData.length === 0) {
-          setDoctorsData(defaultDoctorsData);
-        }
+      const formattedDoctors = fetchedDoctors.map(doc => {
+        const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
+        const avatarUrl = doc.image
+          ? `${baseUrl}/storage/${doc.image}`
+          : null;
+
+        // Map current_status to our status format
+        let status = 'active';
+        if (doc.current_status === 'Out of Schedule') status = 'on-leave';
+        else if (doc.current_status === 'In Progress') status = 'busy';
+        else if (doc.current_status === 'Available') status = 'active';
+
+        return {
+          id: doc.id,
+          name: `Dr. ${doc.full_name}`,
+          specialty: doc.department || 'General',
+          department: doc.department || 'General',
+          status: status,
+          patients: doc.patients_count || 0,
+          rating: doc.rating || 0,
+          experience: doc.experience_years || 0,
+          email: doc.email || '',
+          phone: doc.phone || '',
+          joinDate: doc.created_at ? doc.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          avatar: avatarUrl || `${doc.full_name?.split(' ')[0]?.[0] || ''}${doc.full_name?.split(' ')[1]?.[0] || ''}`.toUpperCase(),
+        };
+      });
+
+
+      if (formattedDoctors.length > 0) {
+        setDoctorsData(formattedDoctors);
+      } else if (doctorsData.length === 0) {
+        setDoctorsData(defaultDoctorsData);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch doctors from API:', error);
+      if (doctorsData.length === 0) {
+        setDoctorsData(defaultDoctorsData);
+      }
+    }
+  };
 
-    fetchDoctors();
+
+
+  // ✅ جديد: جلب كل الأطباء للـ StatisticsTab (بدون pagination)
+const fetchAllDoctors = async () => {
+    try {
+      const response = await api.get('/doctors?per_page=1000');
+      const fetchedDoctors = response.data?.data || [];
+      
+      const formattedDoctors = fetchedDoctors.map(doc => {
+        const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
+        const avatarUrl = doc.image
+          ? `${baseUrl}/storage/${doc.image}`
+          : null;
+
+        let status = 'active';
+        if (doc.current_status === 'Out of Schedule') status = 'on-leave';
+        else if (doc.current_status === 'In Progress') status = 'busy';
+        else if (doc.current_status === 'Available') status = 'active';
+
+        return {
+          id: doc.id,
+          name: `Dr. ${doc.full_name}`,
+          specialty: doc.department || 'General',
+          department: doc.department || 'General',
+          status: status,
+          patients: doc.patients_count || 0,
+          rating: doc.rating || 0,
+          experience: doc.experience_years || 0,
+          email: doc.email || '',
+          phone: doc.phone || '',
+          joinDate: doc.created_at ? doc.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          avatar: avatarUrl || `${doc.full_name?.split(' ')[0]?.[0] || ''}${doc.full_name?.split(' ')[1]?.[0] || ''}`.toUpperCase(),
+        };
+      });
+
+      if (formattedDoctors.length > 0) {
+        setAllDoctorsForStats(formattedDoctors);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch all doctors for stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    console.log('🚀 useEffect running - fetching doctors...'); 
+    fetchDoctors(1);
+    fetchAllDoctors();
   }, []);
 
   const [showAddDoctorModal, setShowAddDoctorModal] = useState(false);
   const [newDoctor, setNewDoctor] = useState({
     department_id: '', first_name: '', last_name: '', address: '',
     email: '', phone_number: '', experience_years: '', education: '',
-    fee: '', commission_percentage: '', profile_picture: null, cv: null
+    fee: '', commission_percentage: '', profile_picture: null, cv: null,
+    gender: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -202,7 +273,7 @@ const AdminDashboard = () => {
     const requiredFields = [
       'department_id', 'first_name', 'last_name', 'address',
       'email', 'phone_number', 'experience_years', 'education',
-      'fee', 'commission_percentage'
+      'fee', 'commission_percentage','gender'
     ];
 
     requiredFields.forEach(field => {
@@ -285,104 +356,74 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSubmitDoctor = async (e) => {
-    e.preventDefault();
+ const handleSubmitDoctor = async (e) => {
+  e.preventDefault();
 
-    if (!validateDoctorForm()) {
-      addNotification('Please fill all required fields correctly', 'info');
-      return;
+  // ✅ استخدم validateDoctorForm الموجودة
+  if (!validateDoctorForm()) {
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const formData = new FormData();
+
+    // الحقول النصية
+    formData.append('department_id', newDoctor.department_id);
+    formData.append('first_name', newDoctor.first_name);
+    formData.append('last_name', newDoctor.last_name);
+    formData.append('address', newDoctor.address);
+    formData.append('email', newDoctor.email);
+    formData.append('phone_number', newDoctor.phone_number);
+    formData.append('experience_years', newDoctor.experience_years);
+    formData.append('education', newDoctor.education);
+    formData.append('fee', newDoctor.fee);
+    formData.append('commission_percentage', newDoctor.commission_percentage);
+    formData.append('gender', newDoctor.gender);
+    // الملفات
+    if (newDoctor.profile_picture) {
+      formData.append('profile_picture', newDoctor.profile_picture);
+    }
+    if (newDoctor.cv) {
+      formData.append('cv', newDoctor.cv);
     }
 
-    setIsSubmitting(true);
+    const response = await api.post('/doctors', formData);
 
-    try {
-      const formData = new FormData();
-      formData.append('first_name', newDoctor.first_name);
-      formData.append('last_name', newDoctor.last_name);
-      formData.append('email', newDoctor.email);
-      formData.append('phone_number', newDoctor.phone_number);
-      formData.append('address', newDoctor.address);
-      formData.append('experience_years', newDoctor.experience_years);
-      formData.append('education', newDoctor.education);
-      formData.append('department_id', newDoctor.department_id);
-      formData.append('fee', newDoctor.fee);
-      formData.append('commission_percentage', newDoctor.commission_percentage);
+    console.log('Doctor added:', response.data);
+    addNotification('Doctor added successfully!', 'success');
+    closeModal();
+    fetchDoctors(1); // أعد تحميل الصفحة الأولى
 
-      if (newDoctor.profile_picture) {
-        formData.append('profile_picture', newDoctor.profile_picture);
-      }
-      if (newDoctor.cv) {
-        formData.append('cv', newDoctor.cv);
-      }
-
-      const response = await api.post('/doctors', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      const createdDoctor = response.data?.data || response.data?.doctor || response.data;
-      const selectedDept = departmentsData.find(d => d.id === newDoctor.department_id);
-
-      const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
-      const profilePath = createdDoctor?.profile_picture;
-      const avatarUrl = profilePath 
-        ? `${baseUrl}/storage/${profilePath}`
-        : null;
-
-      console.log('=== DEBUG ===');
-      console.log('Profile Path:', profilePath);
-      console.log('Avatar URL:', avatarUrl);
-      console.log('Base URL:', baseUrl);
-      console.log('=============');
-
-      const newDoctorEntry = {
-        id: createdDoctor?.id || doctorsData.length + 1,
-        name: `Dr. ${newDoctor.first_name} ${newDoctor.last_name}`,
-        specialty: selectedDept?.name || 'General',
-        department: selectedDept?.name || 'General',
-        status: 'active',
-        patients: 0,
-        experience: parseInt(newDoctor.experience_years),
-        email: newDoctor.email,
-        phone: newDoctor.phone_number,
-        joinDate: new Date().toISOString().split('T')[0],
-        avatar: avatarUrl || `${newDoctor.first_name[0]}${newDoctor.last_name[0]}`.toUpperCase(),
-      };
-
-      setDoctorsData(prev => [...prev, newDoctorEntry]);
-
-      addNotification('Doctor added successfully!', 'success');
-      setShowAddDoctorModal(false);
-      setNewDoctor({
-        department_id: '', first_name: '', last_name: '', address: '',
-        email: '', phone_number: '', experience_years: '', education: '',
-        fee: '', commission_percentage: '', profile_picture: null, cv: null
-      });
-      setErrors({});
-    } catch (error) {
-      console.error('Error adding doctor:', error);
-
-      if (error.response?.status === 422) {
-        const backendErrors = error.response.data?.errors || {};
-        const formattedErrors = {};
-
-        Object.keys(backendErrors).forEach(key => {
-          formattedErrors[key] = backendErrors[key][0];
-        });
-
-        setErrors(formattedErrors);
-        addNotification('Please fix the validation errors', 'info');
-      } else {
-        addNotification(
-          error.response?.data?.message || 'Failed to add doctor. Please try again.', 
-          'info'
-        );
-      }
-    } finally {
-      setIsSubmitting(false);
+  } catch (error) {
+    console.error('Error adding doctor:', error);
+    console.log('Response data:', error.response?.data);
+    
+    // ✅ إظهار أخطاء التحقق من الباك إند إن وجدت
+    if (error.response?.data?.errors) {
+      setErrors(error.response.data.errors);
+    } else {
+      setErrors({ submit: error.response?.data?.message || 'Failed to add doctor' });
     }
-  };
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+const handleDoctorClick = async (doctorId) => {
+  try {
+    const response = await api.get(`/doctors/${doctorId}`);
+    if (response.data?.status === 'success') {
+      setSelectedDoctor(response.data.data);
+      setShowDoctorProfile(true);
+    }
+  } catch (error) {
+    console.error('Failed to fetch doctor profile:', error);
+    addNotification('Failed to load doctor profile', 'error');
+  }
+};
+
 
   const closeModal = () => {
     setShowAddDoctorModal(false);
@@ -390,7 +431,8 @@ const AdminDashboard = () => {
     setNewDoctor({
       department_id: '', first_name: '', last_name: '', address: '',
       email: '', phone_number: '', experience_years: '', education: '',
-      fee: '', commission_percentage: '', profile_picture: null, cv: null
+      fee: '', commission_percentage: '', profile_picture: null, cv: null,
+      gender: ''
     });
   };
 
@@ -538,17 +580,20 @@ const AdminDashboard = () => {
         setShowAddDoctorModal={setShowAddDoctorModal}
         doctorsData={doctorsData}
         setDoctorsData={setDoctorsData}
+        pagination={pagination}
+        fetchDoctors={fetchDoctors}
+        handleDoctorClick={handleDoctorClick}
       />,
       appointments: renderAppointments,
-      departments: DepartmentsTab,
+      departments: () => <DepartmentsTab />, 
       requests: renderRequests,
       payments: renderPayments,
       statistics: () => <StatisticsTab 
-  selectedDoctorId={selectedDoctorId} 
-  setSelectedDoctorId={setSelectedDoctorId}
-  doctorsData={doctorsData}  
+      selectedDoctorId={selectedDoctorId} 
+      setSelectedDoctorId={setSelectedDoctorId}
+       doctorsData={allDoctorsForStats}  
   />,
-      myaccount: MyAccountTab,
+     myaccount: () => <MyAccountTab />,
       settings: () => <SettingsTab darkMode={darkMode} setDarkMode={setDarkMode} />,
 
     };
@@ -586,6 +631,15 @@ const AdminDashboard = () => {
         handleSubmitDoctor={handleSubmitDoctor}
         closeModal={closeModal}
       />
+
+      <DoctorProfileModal
+  show={showDoctorProfile}
+  doctor={selectedDoctor}
+  onClose={() => {
+    setShowDoctorProfile(false);
+    setSelectedDoctor(null);
+  }}
+/>
 
       <div className="toast-container">
         <AnimatePresence>

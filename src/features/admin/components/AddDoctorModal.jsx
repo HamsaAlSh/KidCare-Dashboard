@@ -103,6 +103,21 @@ const AddDoctorModal = ({
                   {errors.last_name && <span className="error-text">{errors.last_name}</span>}
                 </div>
               </div>
+              
+               <div className="form-group">
+  <label>Gender <span className="required">*</span></label>
+  <select
+    name="gender"
+    value={newDoctor.gender}
+    onChange={handleInputChange}
+    className={errors.gender ? 'error' : ''}
+  >
+    <option value="">Select Gender</option>
+    <option value="male">Male</option>
+    <option value="female">Female</option>
+  </select>
+  {errors.gender && <span className="error-text">{errors.gender}</span>}
+</div>
 
               <div className="form-group">
                 <label>Address <span className="required">*</span></label>
