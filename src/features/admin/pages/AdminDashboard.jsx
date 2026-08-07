@@ -32,20 +32,6 @@ const sidebarItems = [
   { id: 'settings', label: 'Settings', icon: 'fa-gear', badge: null },
 ];
 
-const defaultDoctorsData = [
-  { id: 1, name: 'Dr. Sarah Ahmed', specialty: 'General Pediatrics', department: 'General Pediatrics', status: 'active', patients: 156, rating: 4.9, experience: 12, email: 'sarah.ahmed@kidcare.com', phone: '+966 50 123 4567', joinDate: '2019-03-15', avatar: 'SA' },
-  { id: 2, name: 'Dr. Mohammed Ali', specialty: 'General Pediatrics', department: 'General Pediatrics', status: 'active', patients: 203, rating: 4.7, experience: 8, email: 'mohammed.ali@kidcare.com', phone: '+966 50 234 5678', joinDate: '2020-06-22', avatar: 'MA' },
-  { id: 3, name: 'Dr. Fatima Hassan', specialty: 'Dental', department: 'Dental', status: 'on-leave', patients: 89, rating: 4.8, experience: 15, email: 'fatima.hassan@kidcare.com', phone: '+966 50 345 6789', joinDate: '2018-01-10', avatar: 'FH' },
-  { id: 4, name: 'Dr. Ahmed Khalid', specialty: 'Vaccination', department: 'Vaccination', status: 'active', patients: 134, rating: 4.6, experience: 10, email: 'ahmed.khalid@kidcare.com', phone: '+966 50 456 7890', joinDate: '2019-11-05', avatar: 'AK' },
-  { id: 5, name: 'Dr. Layla Omar', specialty: 'Psychiatry', department: 'Psychiatry', status: 'active', patients: 112, rating: 4.9, experience: 14, email: 'layla.omar@kidcare.com', phone: '+966 50 567 8901', joinDate: '2017-08-30', avatar: 'LO' },
-];
-
-const staticDepartmentsData = [
-  { id: 1, name: 'Pediatrics', head: 'Dr. Mohammed Ali', doctors: 12, patients: 450, capacity: 500, occupancy: 90, color: '#4FC3F7' },
-  { id: 2, name: 'Dentistry', head: 'Dr. Fatima Hassan', doctors: 8, patients: 280, capacity: 300, occupancy: 93, color: '#EF5350' },
-  { id: 3, name: 'Psychiatry', head: 'Dr. Layla Omar', doctors: 6, patients: 150, capacity: 200, occupancy: 75, color: '#AB47BC' },
-  { id: 5, name: 'Vaccination', head: 'Dr. Ahmed Khalid', doctors: 7, patients: 220, capacity: 280, occupancy: 79, color: '#66BB6A' },
-];
 
 const initialRequests = [];
 const appointmentsData = [];
@@ -106,17 +92,12 @@ const AdminDashboard = () => {
   const [showInsights, setShowInsights] = useState(false);
   const [insightCount, setInsightCount] = useState(0);
   const [allDoctorsForStats, setAllDoctorsForStats] = useState([]);
-  const [departmentsData, setDepartmentsData] = useState(staticDepartmentsData);
+  const [departmentsData, setDepartmentsData] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);  
   const [showDoctorProfile, setShowDoctorProfile] = useState(false);  
-  const [doctorsData, setDoctorsData] = useState(() => {
-    const saved = localStorage.getItem('kidcare_doctors');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('kidcare_doctors', JSON.stringify(doctorsData));
-  }, [doctorsData]);
+  const [doctorsData, setDoctorsData] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -126,9 +107,9 @@ const AdminDashboard = () => {
     total: 0
   });
 
-  const fetchDoctors = async (page = 1, perPage = 1000) => {
+  const fetchDoctors = async (page = 1) => {
     try {
-      const response = await api.get(`/doctors?page=${page}&per_page=${perPage}`); 
+      const response = await api.get(`/doctors?page=${page}`);
       const fetchedDoctors = response.data?.data || [];
       const paginationData = response.data?.pagination || {};
 
@@ -139,88 +120,18 @@ const AdminDashboard = () => {
         total: paginationData.total || 0
       });
 
-      const formattedDoctors = fetchedDoctors.map(doc => {
-        const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
-        const avatarUrl = doc.image
-          ? `${baseUrl}/storage/${doc.image}`
-          : null;
-
-        // Map current_status to our status format
-        let status = 'active';
-        if (doc.current_status === 'Out of Schedule') status = 'on-leave';
-        else if (doc.current_status === 'In Progress') status = 'busy';
-        else if (doc.current_status === 'Available') status = 'active';
-
-        return {
-          id: doc.id,
-          name: `Dr. ${doc.full_name}`,
-          specialty: doc.department || 'General',
-          department: doc.department || 'General',
-          status: status,
-          patients: doc.patients_count || 0,
-          rating: doc.rating || 0,
-          experience: doc.experience_years || 0,
-          email: doc.email || '',
-          phone: doc.phone || '',
-          joinDate: doc.created_at ? doc.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          avatar: avatarUrl || `${doc.full_name?.split(' ')[0]?.[0] || ''}${doc.full_name?.split(' ')[1]?.[0] || ''}`.toUpperCase(),
-        };
-      });
-
-
-      if (formattedDoctors.length > 0) {
-        setDoctorsData(formattedDoctors);
-      } else if (doctorsData.length === 0) {
-        setDoctorsData(defaultDoctorsData);
-      }
+      setDoctorsData(fetchedDoctors);
     } catch (error) {
-      console.error('Failed to fetch doctors from API:', error);
-      if (doctorsData.length === 0) {
-        setDoctorsData(defaultDoctorsData);
-      }
+      console.error('Failed to fetch doctors:', error);
     }
   };
 
-
-
-  // ✅ جديد: جلب كل الأطباء للـ StatisticsTab (بدون pagination)
-const fetchAllDoctors = async () => {
+  const fetchAllDoctors = async () => {
     try {
       const response = await api.get('/doctors?per_page=1000');
-      const fetchedDoctors = response.data?.data || [];
-      
-      const formattedDoctors = fetchedDoctors.map(doc => {
-        const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
-        const avatarUrl = doc.image
-          ? `${baseUrl}/storage/${doc.image}`
-          : null;
-
-        let status = 'active';
-        if (doc.current_status === 'Out of Schedule') status = 'on-leave';
-        else if (doc.current_status === 'In Progress') status = 'busy';
-        else if (doc.current_status === 'Available') status = 'active';
-
-        return {
-          id: doc.id,
-          name: `Dr. ${doc.full_name}`,
-          specialty: doc.department || 'General',
-          department: doc.department || 'General',
-          status: status,
-          patients: doc.patients_count || 0,
-          rating: doc.rating || 0,
-          experience: doc.experience_years || 0,
-          email: doc.email || '',
-          phone: doc.phone || '',
-          joinDate: doc.created_at ? doc.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          avatar: avatarUrl || `${doc.full_name?.split(' ')[0]?.[0] || ''}${doc.full_name?.split(' ')[1]?.[0] || ''}`.toUpperCase(),
-        };
-      });
-
-      if (formattedDoctors.length > 0) {
-        setAllDoctorsForStats(formattedDoctors);
-      }
+      setAllDoctorsForStats(response.data?.data || []);
     } catch (error) {
-      console.error('❌ Failed to fetch all doctors for stats:', error);
+      console.error('Failed to fetch all doctors for stats:', error);
     }
   };
 
@@ -261,6 +172,30 @@ const fetchAllDoctors = async () => {
       setInsightCount(insights.filter(i => !i.read).length);
     }
   }, [doctorsData, departmentsData]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.search-box-wrapper')) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await api.get('/departments');
+        setDepartmentsData(res.data?.data || []);
+      } catch (err) {
+        console.error('Failed to fetch departments:', err);
+        setDepartmentsData([]);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   const addNotification = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -356,74 +291,150 @@ const fetchAllDoctors = async () => {
     }
   };
 
- const handleSubmitDoctor = async (e) => {
-  e.preventDefault();
+  const handleSubmitDoctor = async (e) => {
+    e.preventDefault();
 
-  // ✅ استخدم validateDoctorForm الموجودة
-  if (!validateDoctorForm()) {
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    const formData = new FormData();
-
-    // الحقول النصية
-    formData.append('department_id', newDoctor.department_id);
-    formData.append('first_name', newDoctor.first_name);
-    formData.append('last_name', newDoctor.last_name);
-    formData.append('address', newDoctor.address);
-    formData.append('email', newDoctor.email);
-    formData.append('phone_number', newDoctor.phone_number);
-    formData.append('experience_years', newDoctor.experience_years);
-    formData.append('education', newDoctor.education);
-    formData.append('fee', newDoctor.fee);
-    formData.append('commission_percentage', newDoctor.commission_percentage);
-    formData.append('gender', newDoctor.gender);
-    // الملفات
-    if (newDoctor.profile_picture) {
-      formData.append('profile_picture', newDoctor.profile_picture);
-    }
-    if (newDoctor.cv) {
-      formData.append('cv', newDoctor.cv);
+    if (!validateDoctorForm()) {
+      return;
     }
 
-    const response = await api.post('/doctors', formData);
+    setIsSubmitting(true);
 
-    console.log('Doctor added:', response.data);
-    addNotification('Doctor added successfully!', 'success');
-    closeModal();
-    fetchDoctors(1); // أعد تحميل الصفحة الأولى
+    try {
+      const formData = new FormData();
 
-  } catch (error) {
-    console.error('Error adding doctor:', error);
-    console.log('Response data:', error.response?.data);
-    
-    // ✅ إظهار أخطاء التحقق من الباك إند إن وجدت
-    if (error.response?.data?.errors) {
-      setErrors(error.response.data.errors);
-    } else {
-      setErrors({ submit: error.response?.data?.message || 'Failed to add doctor' });
+      formData.append('department_id', newDoctor.department_id);
+      formData.append('first_name', newDoctor.first_name);
+      formData.append('last_name', newDoctor.last_name);
+      formData.append('address', newDoctor.address);
+      formData.append('email', newDoctor.email);
+      formData.append('phone_number', newDoctor.phone_number);
+      formData.append('experience_years', newDoctor.experience_years);
+      formData.append('education', newDoctor.education);
+      formData.append('fee', newDoctor.fee);
+      formData.append('commission_percentage', newDoctor.commission_percentage);
+      formData.append('gender', newDoctor.gender);
+
+      if (newDoctor.profile_picture) {
+        formData.append('profile_picture', newDoctor.profile_picture);
+      }
+      if (newDoctor.cv) {
+        formData.append('cv', newDoctor.cv);
+      }
+
+      const response = await api.post('/doctors', formData);
+
+      console.log('Doctor added:', response.data);
+      addNotification('Doctor added successfully!', 'success');
+      closeModal();
+      fetchDoctors(1);
+
+    } catch (error) {
+      console.error('Error adding doctor:', error);
+      console.log('Response data:', error.response?.data);
+
+      if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else {
+        setErrors({ submit: error.response?.data?.message || 'Failed to add doctor' });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
-const handleDoctorClick = async (doctorId) => {
-  try {
-    const response = await api.get(`/doctors/${doctorId}`);
-    if (response.data?.status === 'success') {
-      setSelectedDoctor(response.data.data);
-      setShowDoctorProfile(true);
+  const handleDoctorClick = async (doctorId) => {
+    try {
+      const response = await api.get(`/doctors/${doctorId}`);
+      if (response.data?.status === 'success') {
+        setSelectedDoctor(response.data.data);
+        setShowDoctorProfile(true);
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        addNotification('Doctor not found, refreshing list...', 'info');
+        fetchDoctors(1);
+      } else {
+        console.error('Failed to fetch doctor profile:', error);
+        addNotification('Failed to load doctor profile', 'error');
+      }
     }
-  } catch (error) {
-    console.error('Failed to fetch doctor profile:', error);
-    addNotification('Failed to load doctor profile', 'error');
-  }
-};
+  };
 
+  const handleDoctorUpdate = (updatedDoctor) => {
+    if (!updatedDoctor || !updatedDoctor.id) {
+      console.error('Invalid doctor data:', updatedDoctor);
+      return;
+    }
+
+    const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
+    const avatarUrl = updatedDoctor.image || updatedDoctor.profile_picture
+      ? `${baseUrl}/storage/${updatedDoctor.image || updatedDoctor.profile_picture}`
+      : null;
+
+    let status = 'active';
+    if (updatedDoctor.current_status === 'Out of Schedule') status = 'on-leave';
+    else if (updatedDoctor.current_status === 'In Progress') status = 'busy';
+    else if (updatedDoctor.current_status === 'Available') status = 'active';
+
+    const fullName = updatedDoctor.full_name || updatedDoctor.name || 'Unknown Doctor';
+
+    const formattedDoctor = {
+      // الحقول الخام من الـ API
+      id: updatedDoctor.id,
+      full_name: fullName,
+      current_status: updatedDoctor.current_status || 'Unknown',
+      department: updatedDoctor.department,
+      patients_count: updatedDoctor.patients_count ?? 0,
+      experience_years: updatedDoctor.experience_years ?? 0,
+      phone_number: updatedDoctor.phone_number || '',
+      image: updatedDoctor.image || updatedDoctor.profile_picture,
+      email: updatedDoctor.email || '',
+      created_at: updatedDoctor.created_at,
+
+      // الحقول المفرومة
+      name: `Dr. ${fullName}`,
+      specialty: typeof updatedDoctor.department === 'object' 
+        ? (updatedDoctor.department?.name || 'General')
+        : (updatedDoctor.department || 'General'),
+      status: status,
+      patients: updatedDoctor.patients_count || 0,
+      rating: updatedDoctor.rating || 0,
+      experience: updatedDoctor.experience_years || 0,
+      phone: updatedDoctor.phone_number || '',
+      joinDate: updatedDoctor.created_at ? updatedDoctor.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+      avatar: avatarUrl || `${fullName.split(' ')[0]?.[0] || ''}${fullName.split(' ')[1]?.[0] || ''}`.toUpperCase(),
+    };
+
+    setDoctorsData(prev => 
+      prev.map(d => d.id === formattedDoctor.id ? formattedDoctor : d)
+    );
+
+    if (selectedDoctor && selectedDoctor.id === formattedDoctor.id) {
+      setSelectedDoctor(prev => ({
+        ...prev,
+        ...updatedDoctor,
+      }));
+    }
+  };
+
+  const handleDeleteDoctor = async (doctorId) => {
+    try {
+      await api.delete(`/doctors/${doctorId}`);
+
+      setDoctorsData(prev => prev.filter(d => d.id !== doctorId));
+      await fetchDoctors(1);
+
+      setShowDoctorProfile(false);
+      setSelectedDoctor(null);
+
+      addNotification('Doctor deleted successfully!', 'success');
+
+    } catch (error) {
+      console.error('Failed to delete doctor:', error);
+      addNotification('Failed to delete doctor', 'error');
+    }
+  };
 
   const closeModal = () => {
     setShowAddDoctorModal(false);
@@ -438,6 +449,7 @@ const handleDoctorClick = async (doctorId) => {
 
   const renderAppointments = () => {
     const filtered = appointmentFilter === 'all' ? appointmentsData : appointmentsData.filter(a => a.status === appointmentFilter);
+
     return (
       <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
         <motion.div className="page-header" variants={itemVariants}>
@@ -564,15 +576,15 @@ const handleDoctorClick = async (doctorId) => {
   const renderContent = () => {
     const pages = {
       dashboard: () => <DashboardTab 
-      pendingRequests={pendingRequests} 
-      setPendingRequests={setPendingRequests}
-      addNotification={addNotification}
-      notificationCount={notificationCount}
-      setNotificationCount={setNotificationCount}
+        pendingRequests={pendingRequests} 
+        setPendingRequests={setPendingRequests}
+        addNotification={addNotification}
+        notificationCount={notificationCount}
+        setNotificationCount={setNotificationCount}
       />,
       insights: () => <SmartInsightsTab 
-      doctorsData={doctorsData}
-      departmentsData={departmentsData}
+        doctorsData={doctorsData}
+        departmentsData={departmentsData}
       />,
       doctors: () => <DoctorsTab 
         doctorFilter={doctorFilter} 
@@ -589,13 +601,12 @@ const handleDoctorClick = async (doctorId) => {
       requests: renderRequests,
       payments: renderPayments,
       statistics: () => <StatisticsTab 
-      selectedDoctorId={selectedDoctorId} 
-      setSelectedDoctorId={setSelectedDoctorId}
-       doctorsData={allDoctorsForStats}  
-  />,
-     myaccount: () => <MyAccountTab />,
+        selectedDoctorId={selectedDoctorId} 
+        setSelectedDoctorId={setSelectedDoctorId}
+        doctorsData={allDoctorsForStats}  
+      />,
+      myaccount: () => <MyAccountTab />,
       settings: () => <SettingsTab darkMode={darkMode} setDarkMode={setDarkMode} />,
-
     };
 
     return (
@@ -633,13 +644,15 @@ const handleDoctorClick = async (doctorId) => {
       />
 
       <DoctorProfileModal
-  show={showDoctorProfile}
-  doctor={selectedDoctor}
-  onClose={() => {
-    setShowDoctorProfile(false);
-    setSelectedDoctor(null);
-  }}
-/>
+        show={showDoctorProfile}
+        doctor={selectedDoctor}
+        onUpdate={handleDoctorUpdate}
+        onDelete={handleDeleteDoctor}
+        onClose={() => {
+          setShowDoctorProfile(false);
+          setSelectedDoctor(null);
+        }}
+      />
 
       <div className="toast-container">
         <AnimatePresence>
@@ -664,7 +677,6 @@ const handleDoctorClick = async (doctorId) => {
           }
         }}
       />
-      
 
       <Sidebar 
         activePage={activePage} 
@@ -685,33 +697,137 @@ const handleDoctorClick = async (doctorId) => {
             </motion.p>
           </div>
           <div className="header-right">
-            <motion.div className="search-box-kidcare" whileFocus={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 300 }}>
-              <i className="fa-solid fa-magnifying-glass"></i>
-              <input type="text" placeholder="Search doctors, staff..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </motion.div>
+            <div className="search-box-wrapper" style={{ position: 'relative' }}>
+              <motion.div className="search-box-kidcare" whileFocus={{ scale: 1.02 }}>
+                <i className="fa-solid fa-magnifying-glass"></i>
+                <input 
+                  type="text" 
+                  placeholder="Search doctors, staff..." 
+                  value={searchQuery} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchQuery(value);
+
+                    if (value.length < 2) {
+                      setShowSearchDropdown(false);
+                      return;
+                    }
+
+                    const filtered = allDoctorsForStats.filter(doc => 
+                      doc.full_name?.toLowerCase().includes(value.toLowerCase()) ||
+                      doc.department?.toLowerCase().includes(value.toLowerCase())
+                    );
+
+                    setSearchResults(filtered);
+                    setShowSearchDropdown(true);
+                  }}
+                />
+                {searchQuery && (
+                  <i 
+                    className="fa-solid fa-xmark" 
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#90A4AE' }}
+                    onClick={() => { setSearchQuery(''); setShowSearchDropdown(false); }}
+                  ></i>
+                )}
+              </motion.div>
+
+              {showSearchDropdown && (
+                <div className="search-dropdown" style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  right: 0,
+                  background: '#fff',
+                  borderRadius: '16px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  padding: '8px',
+                  zIndex: 9999,
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                }}>
+                  {searchResults.length > 0 ? (
+                    searchResults.map(doc => (
+                      <div
+                        key={doc.id}
+                        onClick={() => {
+                          setActivePage('doctors');
+                          setSelectedDoctorId(doc.id);
+                          setShowSearchDropdown(false);
+                          setSearchQuery('');
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#E3F2FD'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          background: '#E3F2FD',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#4FC3F7',
+                          fontSize: '14px',
+                          fontWeight: 'bold'
+                        }}>
+                          {doc.full_name?.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '600', fontSize: '14px', color: '#1565C0' }}>
+                            Dr. {doc.full_name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#90A4AE' }}>
+                            {doc.department || 'General'}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#90A4AE', fontSize: '14px' }}>
+                      No doctors found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="action-icons">
               <motion.button className="theme-toggle" onClick={() => setDarkMode(!darkMode)} whileHover={{ rotate: 180, scale: 1.1 }} whileTap={{ scale: 0.9 }} transition={{ duration: 0.4 }}>
                 <i className={`fa-solid ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
               </motion.button>
               <motion.button 
-              className="notif-btn" 
-              whileHover={{ scale: 1.1 }} 
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowInsights(!showInsights)}
-            >
-              <i className="fa-solid fa-lightbulb"></i>
-              {insightCount > 0 && (
-                <motion.span 
-                  className="notif-badge" 
-                  initial={{ scale: 0 }} 
-                  animate={{ scale: 1 }} 
-                  transition={{ type: 'spring', stiffness: 500, damping: 15 }}
-                >
-                  {insightCount}
-                </motion.span>
-              )}
-            </motion.button>
-              <motion.div className="admin-avatar" whileHover={{ scale: 1.1, borderColor: '#4FC3F7' }} whileTap={{ scale: 0.95 }}>
+                className="notif-btn" 
+                whileHover={{ scale: 1.1 }} 
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowInsights(!showInsights)}
+              >
+                <i className="fa-solid fa-lightbulb"></i>
+                {insightCount > 0 && (
+                  <motion.span 
+                    className="notif-badge" 
+                    initial={{ scale: 0 }} 
+                    animate={{ scale: 1 }} 
+                    transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                  >
+                    {insightCount}
+                  </motion.span>
+                )}
+              </motion.button>
+              <motion.div 
+                className="admin-avatar" 
+                whileHover={{ scale: 1.1, borderColor: '#4FC3F7' }} 
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActivePage('myaccount')}
+                style={{ cursor: 'pointer' }}
+              >
                 A
               </motion.div>
             </div>
@@ -724,8 +840,6 @@ const handleDoctorClick = async (doctorId) => {
       </main>
     </div>
   )
-  
 }
-
 
 export default AdminDashboard;

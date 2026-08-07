@@ -1,11 +1,11 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://127.0.0.1:8000/api',
 });
 
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('admin_token');
+  const token = sessionStorage.getItem('admin_token') || sessionStorage.getItem('reception_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -18,6 +18,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       sessionStorage.removeItem('admin_token');
       sessionStorage.removeItem('admin_user');
+      sessionStorage.removeItem('reception_token');
+      sessionStorage.removeItem('reception_user');
       window.location.href = '/login';
     }
     return Promise.reject(error);

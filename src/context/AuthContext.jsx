@@ -6,15 +6,19 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const savedUser = sessionStorage.getItem('admin_user');
+    const savedUser = sessionStorage.getItem('admin_user') || sessionStorage.getItem('reception_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
   }, []);
 
-  const login = async (phoneNumber, password) => {
+  const login = async (phoneNumber, password, role) => {
+    const endpoint = role === 'admin' 
+      ? 'http://127.0.0.1:8000/api/loginAdmin' 
+      : 'http://127.0.0.1:8000/api/loginReceptionist';
+
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/loginAdmin', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,15 +31,21 @@ export function AuthProvider({ children }) {
       });
 
       const data = await response.json();
-      console.log('API Response:', data);
+
       if (data.status === 'success') {
         const userWithRole = {
           ...data.user,
-          role: 'admin'
+          role: role
         };
         
-        sessionStorage.setItem('admin_token', data.Token);
-        sessionStorage.setItem('admin_user', JSON.stringify(userWithRole));
+        if (role === 'admin') {
+          sessionStorage.setItem('admin_token', data.Token);
+          sessionStorage.setItem('admin_user', JSON.stringify(userWithRole));
+        } else {
+          sessionStorage.setItem('reception_token', data.Token);
+          sessionStorage.setItem('reception_user', JSON.stringify(userWithRole));
+        }
+        
         setUser(userWithRole);
         return { success: true };
       } else {
@@ -49,6 +59,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     sessionStorage.removeItem('admin_token');
     sessionStorage.removeItem('admin_user');
+    sessionStorage.removeItem('reception_token');
+    sessionStorage.removeItem('reception_user');
     setUser(null);
   };
 
@@ -59,4 +71,5 @@ export function AuthProvider({ children }) {
   );
 }
 
+// ✅ لازم يكون موجود في آخر الملف:
 export const useAuth = () => useContext(AuthContext);

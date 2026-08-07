@@ -17,7 +17,7 @@ const adminProfile = {
   name: 'Admin User',
   role: 'System Administrator',
   email: 'admin@kidcare.com',
-  phone: '+963 95 500 0000',
+  phone: '+963 96 853 9430',
   joinDate: '2020-01-15',
   avatar: 'A',
   lastLogin: '2024-05-18 09:30 AM',
@@ -33,6 +33,13 @@ const MyAccountTab = () => {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+
+  // 🔴 دالة تسجيل الخروج
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_user');
+    window.location.href = '/login';
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -135,7 +142,9 @@ const MyAccountTab = () => {
             </div>
           </div>
         </div>
-        <div className="account-actions">
+
+        {/* 🔴 أزرار العمليات (تم إضافة زر تسجيل الخروج هنا) */}
+        <div className="account-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <motion.button 
             className="btn-secondary" 
             whileHover={{ scale: 1.03 }} 
@@ -143,6 +152,27 @@ const MyAccountTab = () => {
             onClick={() => setShowModal(true)}
           >
             <i className="fa-solid fa-key"></i> Change Password
+          </motion.button>
+
+          <motion.button 
+            className="btn-danger" 
+            style={{ 
+              backgroundColor: '#ef5350', 
+              color: '#fff', 
+              border: 'none', 
+              padding: '10px 20px', 
+              borderRadius: '12px', 
+              cursor: 'pointer',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            whileHover={{ scale: 1.03 }} 
+            whileTap={{ scale: 0.97 }}
+            onClick={handleLogout}
+          >
+            <i className="fa-solid fa-right-from-bracket"></i> Log Out
           </motion.button>
         </div>
       </motion.div>

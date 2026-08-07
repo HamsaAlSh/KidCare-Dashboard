@@ -12,57 +12,117 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
-const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doctorsData, pagination, fetchDoctors,handleDoctorClick }) => {
-  const filtered = doctorFilter === 'all' ? doctorsData : doctorsData.filter(d => d.status === doctorFilter);
+// ✅ جديد — normalize البيانات من أي format
+const normalizeDoctor = (doctor) => {
+  if (!doctor) return null;
   
+  return {
+    id: doctor.id,
+    full_name: doctor.full_name || doctor.name || 'Unknown Doctor',
+    current_status: doctor.current_status || doctor.status || 'Unknown',
+    department: typeof doctor.department === 'object' 
+      ? doctor.department?.name 
+      : (doctor.department || doctor.specialty || 'No Department'),
+    patients_count: doctor.patients_count ?? doctor.patients ?? 0,
+    experience_years: doctor.experience_years ?? doctor.experience ?? 0,
+    image: doctor.image || doctor.avatar || doctor.profile_picture || null,
+    phone_number: doctor.phone_number || doctor.phone || '',
+  };
+};
+
+const DoctorsTab = ({ 
+  doctorFilter, 
+  setDoctorFilter, 
+  setShowAddDoctorModal, 
+  doctorsData, 
+  setDoctorsData,
+  pagination, 
+  fetchDoctors, 
+  handleDoctorClick 
+}) => {
+  
+  // ✅ normalize كل الدكاترة قبل الفلترة
+  const normalizedDoctors = (Array.isArray(doctorsData) ? doctorsData : []).map(normalizeDoctor).filter(Boolean);
+  
+  const filtered = doctorFilter === 'all' 
+    ? normalizedDoctors 
+    : normalizedDoctors.filter(d => d.current_status === doctorFilter);
+
+  const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return '?';
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
+
+  const getImageUrl = (image) => {
+    if (!image) return null;
+    if (typeof image !== 'string') return null;
+    if (image.startsWith('http')) return image;
+    // ✅ لو path نسبي، ضيف الـ base URL
+    const baseUrl = 'http://localhost:8000/storage/'; // عدل حسب سيرفرك
+    return `${baseUrl}${image.replace(/^\/+/, '')}`;
+  };
+
   const renderAvatar = (doctor) => {
+    if (!doctor) return '?';
     
-    if (doctor.avatar && doctor.avatar.startsWith('http')) {
+    const imageUrl = getImageUrl(doctor.image);
+    
+    if (imageUrl) {
       return (
-        <img 
-          src={doctor.avatar} 
-          alt={doctor.name} 
-          style={{ 
-            width: '100%', 
-            height: '100%', 
+        <img
+          src={imageUrl}
+          alt={doctor.full_name}
+          style={{
+            width: '100%',
+            height: '100%',
             objectFit: 'cover',
             borderRadius: '50%'
           }}
           onError={(e) => {
-            console.error('Image failed to load:', e.target.src);
+            e.target.onerror = null;
             e.target.style.display = 'none';
-            e.target.parentElement.innerText = doctor.name.split(' ').slice(1).map(n => n[0]).join('');
+            const parent = e.target.parentElement;
+            if (parent) {
+              parent.innerText = getInitials(doctor.full_name);
+            }
           }}
         />
       );
     }
-    
-    return doctor.avatar;
+    return getInitials(doctor.full_name);
   };
 
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      active: '#66BB6A',
-      'on-leave': '#FF9800',
-      busy: '#EF5350'
+      'Available': '#22c55e',
+      'Busy': '#ef4444',
+      'Out of Schedule': '#6a6a8a',
+      'active': '#22c55e',
+      'on-leave': '#6a6a8a',
+      'busy': '#ef4444'
     };
     const statusLabels = {
-      active: 'Active',
-      'on-leave': 'On Leave',
-      busy: 'Busy'
+      'Available': 'Available',
+      'Busy': 'Busy',
+      'Out of Schedule': 'Offline',
+      'active': 'Available',
+      'on-leave': 'Offline',
+      'busy': 'Busy'
     };
+    const safeStatus = status || 'Unknown';
     return (
-      <span className="status-badge" style={{ background: statusColors[status] || '#90A4AE' }}>
-        {statusLabels[status] || status}
+      <span className="status-badge" style={{ background: statusColors[safeStatus] || '#90A4AE' }}>
+        {statusLabels[safeStatus] || safeStatus}
       </span>
     );
   };
 
-  // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages = [];
-    const { current_page, last_page } = pagination;
-    
+    const { current_page, last_page } = pagination || {};
+
+    if (!last_page || last_page <= 1) return pages;
+
     if (last_page <= 7) {
       for (let i = 1; i <= last_page; i++) pages.push(i);
     } else {
@@ -85,13 +145,15 @@ const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doct
     return pages;
   };
 
+  const safePagination = pagination || { current_page: 1, last_page: 1, total: 0 };
+
   return (
     <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
       <motion.div className="page-header" variants={itemVariants}>
         <div className="filter-tabs">
-          {['all', 'active', 'busy', 'on-leave'].map(filter => (
+          {['all', 'Available', 'Busy', 'Out of Schedule'].map(filter => (
             <button key={filter} className={`filter-tab ${doctorFilter === filter ? 'active' : ''}`} onClick={() => setDoctorFilter(filter)}>
-              {filter === 'all' ? 'All' : filter.replace('-', ' ')}
+              {filter === 'all' ? 'All' : filter === 'Out of Schedule' ? 'Offline' : filter}
             </button>
           ))}
         </div>
@@ -100,67 +162,71 @@ const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doct
         </motion.button>
       </motion.div>
 
-      {/* Results count */}
       <motion.div variants={itemVariants} style={{ marginBottom: '16px', color: '#78909C', fontSize: '14px' }}>
-        Showing {filtered.length} of {pagination.total} doctors
-        {pagination.total > 0 && ` (Page ${pagination.current_page} of ${pagination.last_page})`}
+        Showing {filtered.length} of {safePagination.total} doctors
+        {safePagination.total > 0 && ` (Page ${safePagination.current_page} of ${safePagination.last_page})`}
       </motion.div>
 
       <div className="doctors-grid">
-        {filtered.map((doctor, index) => (
-          <motion.div key={doctor.id} className="doctor-card" variants={itemVariants}
-           onClick={() => handleDoctorClick(doctor.id)}
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-            whileHover={{ y: -5, boxShadow: '0 15px 40px rgba(79,195,247,0.15)' }}
-          >
-            <div className="doctor-card-header">
-              <div className="doctor-avatar-large" style={{ 
-                background: doctor.avatar?.startsWith('http') 
-                  ? '#f0f0f0' 
-                  : `linear-gradient(135deg, ${doctor.status === 'active' ? '#E1F5FE' : '#FFF3E0'}, ${doctor.status === 'active' ? '#B3E5FC' : '#FFE0B2'})`,
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '24px',
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%'
-              }}>
-                {renderAvatar(doctor)}
+        {filtered.map((doctor, index) => {
+          const isAvailable = doctor.current_status === 'Available' || doctor.current_status === 'active';
+          
+          return (
+            <motion.div 
+              key={doctor.id || `doctor-${index}`} 
+              className="doctor-card" 
+              variants={itemVariants}
+              onClick={() => doctor.id && handleDoctorClick(doctor.id)}
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: index * 0.05 }}
+              whileHover={{ y: -5, boxShadow: '0 15px 40px rgba(79,195,247,0.15)' }}
+            >
+              <div className="doctor-card-header">
+                <div className="doctor-avatar-large" style={{
+                  background: doctor.image
+                    ? '#f0f0f0'
+                    : `linear-gradient(135deg, ${isAvailable ? '#E1F5FE' : '#FFF3E0'}, ${isAvailable ? '#B3E5FC' : '#FFE0B2'})`,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '24px',
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%'
+                }}>
+                  {renderAvatar(doctor)}
+                </div>
+                <StatusBadge status={doctor.current_status} />
               </div>
-              <StatusBadge status={doctor.status} />
-            </div>
-            <h4 className="doctor-name">{doctor.name}</h4>
-            <p className="doctor-specialty">{doctor.specialty}</p>
-            <div className="doctor-stats">
-              <div className="doctor-stat">
-                <i className="fa-solid fa-users"></i>
-                <span>{doctor.patients} Patients</span>
+              <h4 className="doctor-name">{doctor.full_name}</h4>
+              <p className="doctor-specialty">{doctor.department}</p>
+              <div className="doctor-stats">
+                <div className="doctor-stat">
+                  <i className="fa-solid fa-users"></i>
+                  <span>{doctor.patients_count} Patients</span>
+                </div>
+                <div className="doctor-stat">
+                  <i className="fa-solid fa-briefcase"></i>
+                  <span>{doctor.experience_years} Yrs</span>
+                </div>
               </div>
-              <div className="doctor-stat">
-                <i className="fa-solid fa-star"></i>
-                <span>{doctor.rating || 'N/A'}</span>
+              <div className="doctor-contact">
+                {doctor.phone_number && (
+                  <p><i className="fa-solid fa-phone"></i> {doctor.phone_number}</p>
+                )}
               </div>
-              <div className="doctor-stat">
-                <i className="fa-solid fa-briefcase"></i>
-                <span>{doctor.experience} Yrs</span>
-              </div>
-            </div>
-            <div className="doctor-contact">
-              {doctor.email && <p><i className="fa-solid fa-envelope"></i> {doctor.email}</p>}
-              {doctor.phone && <p><i className="fa-solid fa-phone"></i> {doctor.phone}</p>}
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Empty state */}
       {filtered.length === 0 && (
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           className="empty-state"
           style={{ textAlign: 'center', padding: '60px 20px', color: '#78909C' }}
         >
@@ -169,30 +235,28 @@ const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doct
         </motion.div>
       )}
 
-      {/* Pagination */}
-      {pagination.last_page > 1 && (
-        <motion.div 
+      {safePagination.last_page > 1 && (
+        <motion.div
           variants={itemVariants}
-          style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            gap: '6px', 
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '6px',
             marginTop: '32px',
             flexWrap: 'wrap'
           }}
         >
-          {/* Previous button */}
           <button
-            onClick={() => fetchDoctors(pagination.current_page - 1)}
-            disabled={pagination.current_page === 1}
+            onClick={() => fetchDoctors(safePagination.current_page - 1)}
+            disabled={safePagination.current_page === 1}
             style={{
               padding: '8px 14px',
               borderRadius: '10px',
               border: '1px solid #E0E0E0',
-              background: pagination.current_page === 1 ? '#F5F5F5' : '#fff',
-              color: pagination.current_page === 1 ? '#BDBDBD' : '#2196F3',
-              cursor: pagination.current_page === 1 ? 'not-allowed' : 'pointer',
+              background: safePagination.current_page === 1 ? '#F5F5F5' : '#fff',
+              color: safePagination.current_page === 1 ? '#BDBDBD' : '#2196F3',
+              cursor: safePagination.current_page === 1 ? 'not-allowed' : 'pointer',
               fontSize: '14px',
               fontWeight: '500',
               transition: 'all 0.2s',
@@ -201,9 +265,8 @@ const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doct
             <i className="fa-solid fa-chevron-left"></i>
           </button>
 
-          {/* Page numbers */}
           {getPageNumbers().map((page, index) => (
-            <React.Fragment key={index}>
+            <React.Fragment key={`page-${index}`}>
               {page === '...' ? (
                 <span style={{ color: '#78909C', padding: '0 4px', fontSize: '14px' }}>...</span>
               ) : (
@@ -213,12 +276,12 @@ const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doct
                     padding: '8px 14px',
                     borderRadius: '10px',
                     border: '1px solid',
-                    borderColor: pagination.current_page === page ? '#2196F3' : '#E0E0E0',
-                    background: pagination.current_page === page ? '#2196F3' : '#fff',
-                    color: pagination.current_page === page ? '#fff' : '#546E7A',
+                    borderColor: safePagination.current_page === page ? '#2196F3' : '#E0E0E0',
+                    background: safePagination.current_page === page ? '#2196F3' : '#fff',
+                    color: safePagination.current_page === page ? '#fff' : '#546E7A',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: pagination.current_page === page ? '600' : '500',
+                    fontWeight: safePagination.current_page === page ? '600' : '500',
                     minWidth: '40px',
                     transition: 'all 0.2s',
                   }}
@@ -229,17 +292,16 @@ const DoctorsTab = ({ doctorFilter, setDoctorFilter, setShowAddDoctorModal, doct
             </React.Fragment>
           ))}
 
-          {/* Next button */}
           <button
-            onClick={() => fetchDoctors(pagination.current_page + 1)}
-            disabled={pagination.current_page === pagination.last_page}
+            onClick={() => fetchDoctors(safePagination.current_page + 1)}
+            disabled={safePagination.current_page === safePagination.last_page}
             style={{
               padding: '8px 14px',
               borderRadius: '10px',
               border: '1px solid #E0E0E0',
-              background: pagination.current_page === pagination.last_page ? '#F5F5F5' : '#fff',
-              color: pagination.current_page === pagination.last_page ? '#BDBDBD' : '#2196F3',
-              cursor: pagination.current_page === pagination.last_page ? 'not-allowed' : 'pointer',
+              background: safePagination.current_page === safePagination.last_page ? '#F5F5F5' : '#fff',
+              color: safePagination.current_page === safePagination.last_page ? '#BDBDBD' : '#2196F3',
+              cursor: safePagination.current_page === safePagination.last_page ? 'not-allowed' : 'pointer',
               fontSize: '14px',
               fontWeight: '500',
               transition: 'all 0.2s',

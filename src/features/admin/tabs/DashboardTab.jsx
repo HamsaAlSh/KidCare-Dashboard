@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AnimatedNumber, QuickStatCard, StatCard } from '../components/SharedComponents';
-import axios from 'axios'; // ✅ استخدم axios مباشرة
+import api from '../../../api/axios';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -28,33 +28,6 @@ const DashboardTab = () => {
     error: null,
   });
 
-  // ✅ إنشاء axios instance محلي
-  const api = axios.create({
-    baseURL: '/api',
-  });
-
-  // ✅ إضافة التوكن للـ requests
-  api.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('admin_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
-
-  // ✅ إضافة interceptor للـ 401
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        sessionStorage.removeItem('admin_token');
-        sessionStorage.removeItem('admin_user');
-        window.location.href = '/login';
-      }
-      return Promise.reject(error);
-    }
-  );
-
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -67,7 +40,7 @@ const DashboardTab = () => {
           dailyRevenueRes,
           topDoctorRes,
           topDepartmentRes,
-        ] = await Promise.all([
+        ] = await Promise.allSettled([
           api.get('/home/patients-count'),
           api.get('/home/present-doctors-count'),
           api.get('/home/appointments-count'),
@@ -78,15 +51,34 @@ const DashboardTab = () => {
           api.get('/home/top-department'),
         ]);
 
+        // Helper function to safely extract data from Promise.allSettled results
+        const getData = (res) => {
+          if (res.status === 'rejected') {
+            console.warn('API call rejected:', res.reason?.message || res.reason);
+            return null;
+          }
+          // res.value is the axios response object
+          return res.value?.data ?? null;
+        };
+
+        const patientsData = getData(patientsRes);
+        const doctorsData = getData(doctorsRes);
+        const appointmentsData = getData(appointmentsRes);
+        const occupancyData = getData(occupancyRes);
+        const monthlyData = getData(monthlyRevenueRes);
+        const dailyData = getData(dailyRevenueRes);
+        const topDoctorData = getData(topDoctorRes);
+        const topDeptData = getData(topDepartmentRes);
+
         setStats({
-          totalPatients: patientsRes.data.patients_count || 0,
-          presentDoctors: doctorsRes.data.data?.present_doctors_count || 0,
-          appointmentsToday: appointmentsRes.data.data?.today_appointments_count || 0,
-          occupancyRate: parseFloat(occupancyRes.data.data?.clinic_occupancy_percentage) || 0,
-          monthlyRevenue: monthlyRevenueRes.data.data?.financials?.total_revenue || 0,
-          dailyRevenue: dailyRevenueRes.data.data?.financials?.total_revenue || 0,
-          topDoctor: topDoctorRes.data.data || null,
-          topDepartment: topDepartmentRes.data.data || null,
+          totalPatients: patientsData?.patients_count || 0,
+          presentDoctors: doctorsData?.data?.present_doctors_count || 0,
+          appointmentsToday: appointmentsData?.data?.today_appointments_count || 0,
+          occupancyRate: parseFloat(occupancyData?.data?.clinic_occupancy_percentage) || 0,
+          monthlyRevenue: monthlyData?.data?.financials?.total_revenue || 0,
+          dailyRevenue: dailyData?.data?.financials?.total_revenue || 0,
+          topDoctor: topDoctorData?.data || null,
+          topDepartment: topDeptData?.data || null,
           loading: false,
           error: null,
         });
@@ -118,7 +110,7 @@ const DashboardTab = () => {
 
   return (
     <motion.div className="dashboard-grid-content" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
-      
+
       {/* Quick Stats Grid */}
       <motion.section className="quick-stats-grid" variants={itemVariants}>
         <QuickStatCard 
@@ -153,11 +145,11 @@ const DashboardTab = () => {
 
       {/* Financial Overview & Performance Stats */}
       <motion.section className="dashboard-stats-wrapper" variants={containerVariants}>
-        
+
         {/* Financial Overview */}
         <motion.div className="stats-column" variants={itemVariants}>
           <h3 className="section-title">Financial Overview</h3>
-          
+
           <StatCard 
             title="Monthly Revenue" 
             value={`$${stats.monthlyRevenue.toLocaleString('en-US')}`} 
@@ -166,7 +158,7 @@ const DashboardTab = () => {
             icon="fa-wallet" 
             color="blue" 
           />
-          
+
           <StatCard 
             title="Daily Revenue" 
             value={`$${stats.dailyRevenue.toLocaleString('en-US')}`} 
@@ -180,7 +172,7 @@ const DashboardTab = () => {
         {/* Performance Stats */}
         <motion.div className="stats-column" variants={itemVariants}>
           <h3 className="section-title">Performance Stats</h3>
-          
+
           <StatCard 
             title="Top Doctor This Week" 
             value={stats.topDoctor?.doctor_name || 'No data'} 
@@ -188,7 +180,7 @@ const DashboardTab = () => {
             icon="fa-award" 
             color="purple" 
           />
-          
+
           <StatCard 
             title="Top Department" 
             value={stats.topDepartment?.department_name || 'No data'} 

@@ -28,7 +28,7 @@ const LoginForm = () => {
     
     setIsLoading(true);
     
-    const result = await login(formData.phone_number, formData.password);
+    const result = await login(formData.phone_number, formData.password, role);
     
     setIsLoading(false);
     

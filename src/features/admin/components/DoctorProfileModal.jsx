@@ -59,18 +59,18 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return '#66BB6A';
-      case 'busy': return '#EF5350';
-      case 'on-leave': return '#FFA726';
+      case 'Available': return '#22c55e';
+      case 'Busy': return '#ef4444';
+      case 'Out of Schedule': return '#6a6a8a';
       default: return '#9E9E9E';
     }
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'active': return 'Active';
-      case 'busy': return 'In Progress';
-      case 'on-leave': return 'Out of Schedule';
+      case 'Available': return 'Available';
+      case 'Busy': return 'Busy';
+      case 'Out of Schedule': return 'Offline';
       default: return 'Unknown';
     }
   };
@@ -95,10 +95,10 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
       address: doctor.address || '',
       gender: doctor.gender || 'male',
       education: doctor.education || '',
-      experience_years: doctor.experience_years || '',
-      fee: doctor.fee || '',
-      commission_percentage: doctor.commission_percentage || '',
-      department_id: doctor.department?.id || '',
+      experience_years: doctor.experience_years ?? '',
+      fee: doctor.fee ?? '',
+      commission_percentage: doctor.commission_percentage ?? '',
+      department_id: doctor.department?.id ?? '',
     });
     setEditFiles({ profile_picture: null, cv: null });
     setIsEditing(true);
@@ -112,7 +112,10 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditData(prev => ({ ...prev, [name]: value }));
+    setEditData(prev => ({
+      ...prev,
+      [name]: name === 'gender' ? value.toLowerCase() : value
+    }));
   };
 
   const handleFileChange = (e) => {
@@ -122,31 +125,26 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     }
   };
 
-  // ✅✅✅ SAVE - FIXED ✅✅✅
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const formData = new FormData();
-      
-      // ✅ أرسل كل الحقول حتى الفارغة (لأن Backend بيحتاجها)
-      // بس حول الفارغ لـ null مش empty string
+
       const fields = [
         'first_name', 'last_name', 'phone_number', 'email',
         'address', 'gender', 'education', 'experience_years',
         'fee', 'commission_percentage', 'department_id'
       ];
-      
+
       fields.forEach(key => {
         const value = editData[key];
-        // ✅ إذا فارغ، أرسل null
         if (value === '' || value === null || value === undefined) {
-          formData.append(key, ''); // Backend بيحتاج قيمة
+          formData.append(key, '');
         } else {
           formData.append(key, value);
         }
       });
 
-      // ✅ الملفات
       if (editFiles.profile_picture) {
         formData.append('profile_picture', editFiles.profile_picture);
       }
@@ -154,16 +152,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
         formData.append('cv', editFiles.cv);
       }
 
-      // ✅ Laravel method spoofing
       formData.append('_method', 'PUT');
-
-      console.log('📤 Sending update...');
-      console.log('📤 Doctor ID:', doctor.id);
-
-      // ✅ شوف كل FormData
-      for (let [key, value] of formData.entries()) {
-        console.log(`📤 ${key}:`, value);
-      }
 
       const response = await api.post(`/doctors/${doctor.id}`, formData, {
         headers: {
@@ -171,44 +160,31 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
         },
       });
 
-      console.log('📥 Response:', response.data);
-
       if (response.data.status === 'success') {
-        // ✅ تحدث الـ doctor بالبيانات الجديدة
         const updatedDoctor = response.data.data;
-        
         setIsEditing(false);
-        
-        // ✅ نادي onUpdate
         if (onUpdate && updatedDoctor) {
           onUpdate(updatedDoctor);
         }
-        
-        alert('✅ Doctor updated successfully!');
+        alert('Doctor updated successfully!');
       } else {
         alert('⚠️ ' + (response.data.message || 'Unknown response'));
       }
     } catch (error) {
-      console.error('❌ Error:', error);
-      
       if (error.response) {
         const status = error.response.status;
         const data = error.response.data;
-        
-        console.error('❌ Status:', status);
-        console.error('❌ Data:', data);
-        
         if (status === 422) {
           const errors = data.errors;
           const errorMessages = errors ? Object.values(errors).flat().join('\n') : data.message;
-          alert('❌ Validation Error:\n' + errorMessages);
+          alert('Validation Error:\n' + errorMessages);
         } else if (status === 401) {
-          alert('❌ Session expired!');
+          alert('Session expired!');
         } else {
-          alert(`❌ Error ${status}: ${data.message || 'Unknown'}`);
+          alert(`Error ${status}: ${data.message || 'Unknown'}`);
         }
       } else {
-        alert('❌ Error: ' + error.message);
+        alert('Error: ' + error.message);
       }
     } finally {
       setIsSaving(false);
@@ -223,14 +199,11 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     setIsDeleting(true);
     try {
       const response = await api.delete(`/doctors/${doctor.id}`);
-      console.log('📥 Delete response:', response.data);
-
-      alert('✅ Doctor deleted successfully!');
+      alert('Doctor deleted successfully!');
       onDelete?.(doctor.id);
       onClose();
     } catch (error) {
-      console.error('❌ Delete error:', error);
-      alert('❌ Error: ' + (error.response?.data?.message || error.message));
+      alert('Error: ' + (error.response?.data?.message || error.message));
       setIsDeleting(false);
     }
   };
@@ -253,23 +226,29 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="doctor-profile-header">
               <div className="doctor-avatar-section">
-                {getImageUrl() ? (
+                {editFiles.profile_picture ? (
+                  <img
+                    src={URL.createObjectURL(editFiles.profile_picture)}
+                    alt="Preview"
+                    className="doctor-profile-img"
+                  />
+                ) : getImageUrl() ? (
                   <img
                     src={getImageUrl()}
                     alt={doctor.full_name}
                     className="doctor-profile-img"
                     onError={(e) => {
                       e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
+                      const fallback = e.target.parentElement?.querySelector('.doctor-avatar-fallback');
+                      if (fallback) fallback.style.display = 'flex';
                     }}
                   />
                 ) : null}
                 <div
                   className="doctor-avatar-fallback"
-                  style={{ display: getImageUrl() ? 'none' : 'flex' }}
+                  style={{ display: (editFiles.profile_picture || getImageUrl()) ? 'none' : 'flex' }}
                 >
                   {getAvatarLetters()}
                 </div>
@@ -283,10 +262,10 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                 </span>
                 <div
                   className="doctor-status-badge"
-                  style={{ backgroundColor: getStatusColor(doctor.status) + '20', color: getStatusColor(doctor.status) }}
+                  style={{ backgroundColor: getStatusColor(doctor.current_status) + '20', color: getStatusColor(doctor.current_status) }}
                 >
-                  <span className="status-dot" style={{ backgroundColor: getStatusColor(doctor.status) }}></span>
-                  {getStatusLabel(doctor.status)}
+                  <span className="status-dot" style={{ backgroundColor: getStatusColor(doctor.current_status) }}></span>
+                  {getStatusLabel(doctor.current_status)}
                 </div>
               </div>
 
@@ -295,9 +274,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="doctor-profile-body">
-              
               {isEditing ? (
                 <div className="edit-form">
                   <div className="profile-section">
@@ -409,8 +386,8 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                     <div className="profile-section">
                       <h3><i className="fa-solid fa-calendar-days"></i> Availability Schedule</h3>
                       <div className="availability-list">
-                        {doctor.availabilities.map((avail, index) => (
-                          <div key={index} className="availability-item">
+                        {doctor.availabilities.map((avail) => (
+                          <div key={avail.id || `${avail.day_of_week}-${avail.start_time}`} className="availability-item">
                             <div className="availability-day"><i className="fa-solid fa-sun"></i>{formatDay(avail.day_of_week)}</div>
                             <div className="availability-time"><i className="fa-regular fa-clock"></i>{formatTime(avail.start_time)} - {formatTime(avail.end_time)}</div>
                           </div>
@@ -446,7 +423,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
               )}
             </div>
 
-            {/* Footer */}
             <div className="modal-footer doctor-profile-footer">
               {isEditing ? (
                 <>
