@@ -15,18 +15,39 @@ const itemVariants = {
 // ✅ جديد — normalize البيانات من أي format
 const normalizeDoctor = (doctor) => {
   if (!doctor) return null;
-  
+
+  // ✅ بناء full_name من first_name + last_name إذا لم يكن موجوداً
+  const fullName = doctor.full_name 
+    || (doctor.first_name && doctor.last_name 
+        ? `${doctor.first_name} ${doctor.last_name}` 
+        : null)
+    || doctor.name 
+    || 'Unknown Doctor';
+
   return {
     id: doctor.id,
-    full_name: doctor.full_name || doctor.name || 'Unknown Doctor',
+    full_name: fullName,
+    first_name: doctor.first_name || '',
+    last_name: doctor.last_name || '',
     current_status: doctor.current_status || doctor.status || 'Unknown',
     department: typeof doctor.department === 'object' 
       ? doctor.department?.name 
       : (doctor.department || doctor.specialty || 'No Department'),
+    department_id: typeof doctor.department === 'object' 
+      ? doctor.department?.id 
+      : doctor.department_id,
     patients_count: doctor.patients_count ?? doctor.patients ?? 0,
     experience_years: doctor.experience_years ?? doctor.experience ?? 0,
     image: doctor.image || doctor.avatar || doctor.profile_picture || null,
     phone_number: doctor.phone_number || doctor.phone || '',
+    email: doctor.email || '',
+    address: doctor.address || '',
+    gender: doctor.gender || '',
+    education: doctor.education || '',
+    fee: doctor.fee ?? '',
+    commission_percentage: doctor.commission_percentage ?? '',
+    cv: doctor.cv || null,
+    availabilities: doctor.availabilities || [],
   };
 };
 
@@ -40,10 +61,10 @@ const DoctorsTab = ({
   fetchDoctors, 
   handleDoctorClick 
 }) => {
-  
+
   // ✅ normalize كل الدكاترة قبل الفلترة
   const normalizedDoctors = (Array.isArray(doctorsData) ? doctorsData : []).map(normalizeDoctor).filter(Boolean);
-  
+
   const filtered = doctorFilter === 'all' 
     ? normalizedDoctors 
     : normalizedDoctors.filter(d => d.current_status === doctorFilter);
@@ -58,15 +79,15 @@ const DoctorsTab = ({
     if (typeof image !== 'string') return null;
     if (image.startsWith('http')) return image;
     // ✅ لو path نسبي، ضيف الـ base URL
-    const baseUrl = 'http://localhost:8000/storage/'; // عدل حسب سيرفرك
+    const baseUrl = 'http://localhost:8000/storage/'; 
     return `${baseUrl}${image.replace(/^\/+/, '')}`;
   };
 
   const renderAvatar = (doctor) => {
     if (!doctor) return '?';
-    
+
     const imageUrl = getImageUrl(doctor.image);
-    
+
     if (imageUrl) {
       return (
         <img
@@ -170,7 +191,7 @@ const DoctorsTab = ({
       <div className="doctors-grid">
         {filtered.map((doctor, index) => {
           const isAvailable = doctor.current_status === 'Available' || doctor.current_status === 'active';
-          
+
           return (
             <motion.div 
               key={doctor.id || `doctor-${index}`} 
@@ -315,4 +336,6 @@ const DoctorsTab = ({
   );
 };
 
+// ✅ تصدير normalizeDoctor لاستخدامه خارجياً
+export { normalizeDoctor };
 export default DoctorsTab;

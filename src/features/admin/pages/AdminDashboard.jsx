@@ -22,6 +22,8 @@ import MyAccountTab from "../tabs/MyAccountTab";
 import SettingsTab from "../tabs/SettingsTab";
 import SmartInsightsTab from "../tabs/SmartInsightsTab";
 
+import { normalizeDoctor } from "../tabs/DoctorsTab";
+
 
 const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'fa-house', badge: null },
@@ -367,50 +369,19 @@ const AdminDashboard = () => {
       return;
     }
 
-    const baseUrl = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000';
-    const avatarUrl = updatedDoctor.image || updatedDoctor.profile_picture
-      ? `${baseUrl}/storage/${updatedDoctor.image || updatedDoctor.profile_picture}`
-      : null;
+    // ✅ استخدام normalizeDoctor لضمان توافق البيانات
+    const normalizedDoctor = normalizeDoctor(updatedDoctor);
 
-    let status = 'active';
-    if (updatedDoctor.current_status === 'Out of Schedule') status = 'on-leave';
-    else if (updatedDoctor.current_status === 'In Progress') status = 'busy';
-    else if (updatedDoctor.current_status === 'Available') status = 'active';
-
-    const fullName = updatedDoctor.full_name || updatedDoctor.name || 'Unknown Doctor';
-
-    const formattedDoctor = {
-      // الحقول الخام من الـ API
-      id: updatedDoctor.id,
-      full_name: fullName,
-      current_status: updatedDoctor.current_status || 'Unknown',
-      department: updatedDoctor.department,
-      patients_count: updatedDoctor.patients_count ?? 0,
-      experience_years: updatedDoctor.experience_years ?? 0,
-      phone_number: updatedDoctor.phone_number || '',
-      image: updatedDoctor.image || updatedDoctor.profile_picture,
-      email: updatedDoctor.email || '',
-      created_at: updatedDoctor.created_at,
-
-      // الحقول المفرومة
-      name: `Dr. ${fullName}`,
-      specialty: typeof updatedDoctor.department === 'object' 
-        ? (updatedDoctor.department?.name || 'General')
-        : (updatedDoctor.department || 'General'),
-      status: status,
-      patients: updatedDoctor.patients_count || 0,
-      rating: updatedDoctor.rating || 0,
-      experience: updatedDoctor.experience_years || 0,
-      phone: updatedDoctor.phone_number || '',
-      joinDate: updatedDoctor.created_at ? updatedDoctor.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      avatar: avatarUrl || `${fullName.split(' ')[0]?.[0] || ''}${fullName.split(' ')[1]?.[0] || ''}`.toUpperCase(),
-    };
+    if (!normalizedDoctor) {
+      console.error('Failed to normalize doctor data:', updatedDoctor);
+      return;
+    }
 
     setDoctorsData(prev => 
-      prev.map(d => d.id === formattedDoctor.id ? formattedDoctor : d)
+      prev.map(d => d.id === normalizedDoctor.id ? normalizedDoctor : d)
     );
 
-    if (selectedDoctor && selectedDoctor.id === formattedDoctor.id) {
+    if (selectedDoctor && selectedDoctor.id === normalizedDoctor.id) {
       setSelectedDoctor(prev => ({
         ...prev,
         ...updatedDoctor,

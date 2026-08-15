@@ -3,8 +3,7 @@ import { LayoutDashboard, CalendarDays, UserPlus, DollarSign, Settings, User } f
 
 
 import logoImage from "../../../assets/logo.jpg";
-// import logoImage from "../../assets/logo.jpg";
-// import logoImage from "../assets/logo.jpg";
+
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -12,7 +11,7 @@ const menuItems = [
   { id: 'add-account', label: 'Add Account', icon: UserPlus },
   { id: 'revenue', label: 'Daily Revenue', icon: DollarSign },
   { id: 'settings', label: 'Settings', icon: Settings },
-  { id: 'account', label: 'My Account', icon: User },
+
 ];
 
 export default function Sidebar({ activePage, onPageChange }) {

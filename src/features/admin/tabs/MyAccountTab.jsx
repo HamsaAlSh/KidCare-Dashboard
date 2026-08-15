@@ -25,14 +25,25 @@ const adminProfile = {
 };
 
 const MyAccountTab = () => {
+  // ─── Modal: Admin Change Password ───
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     old_password: '',
     new_password: '',
     confirm_password: '',
   });
+
+  // ─── Modal: Reception Change Password ───
+  const [showReceptionModal, setShowReceptionModal] = useState(false);
+  const [receptionFormData, setReceptionFormData] = useState({
+    password: '',
+    password_confirmation: '',
+  });
+
   const [loading, setLoading] = useState(false);
+  const [receptionLoading, setReceptionLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [receptionMessage, setReceptionMessage] = useState(null);
 
   // 🔴 دالة تسجيل الخروج
   const handleLogout = () => {
@@ -41,13 +52,14 @@ const MyAccountTab = () => {
     window.location.href = '/login';
   };
 
+  // ─── Admin Password Handlers ───
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.new_password !== formData.confirm_password) {
       setMessage({ type: 'error', text: 'New passwords do not match' });
       return;
@@ -108,6 +120,76 @@ const MyAccountTab = () => {
     }
   };
 
+  // ─── Reception Password Handlers ───
+  const handleReceptionChange = (e) => {
+    setReceptionFormData({ ...receptionFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleReceptionSubmit = async (e) => {
+    e.preventDefault();
+
+    if (receptionFormData.password !== receptionFormData.password_confirmation) {
+      setReceptionMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+
+    setReceptionLoading(true);
+    setReceptionMessage(null);
+
+    try {
+      const token = sessionStorage.getItem('admin_token');
+
+      // ✅ استخدام URLSearchParams بدلاً من FormData (x-www-form-urlencoded)
+      const params = new URLSearchParams();
+      params.append('password', receptionFormData.password);
+      params.append('password_confirmation', receptionFormData.password_confirmation);
+
+      const response = await axios.put(
+        'https://kidcare.sy/api/admin/receptionists/1/change-password',
+        params,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+          },
+        }
+      );
+
+      setReceptionMessage({ type: 'success', text: 'Reception password changed successfully' });
+      setTimeout(() => {
+        setShowReceptionModal(false);
+        setReceptionFormData({ password: '', password_confirmation: '' });
+        setReceptionMessage(null);
+      }, 1500);
+
+    } catch (error) {
+      console.log('Reception Error status:', error.response?.status);
+      console.log('Reception Error data:', error.response?.data);
+
+      if (error.response?.status === 401) {
+        sessionStorage.removeItem('admin_token');
+        sessionStorage.removeItem('admin_user');
+        window.location.href = '/login';
+        return;
+      }
+
+      const errorData = error.response?.data;
+      let errorMsg = 'An error occurred';
+
+      if (errorData?.message) {
+        errorMsg = errorData.message;
+      } else if (errorData?.errors) {
+        errorMsg = Object.entries(errorData.errors)
+          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+          .join(' | ');
+      }
+
+      setReceptionMessage({ type: 'error', text: errorMsg });
+    } finally {
+      setReceptionLoading(false);
+    }
+  };
+
   return (
     <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
       <motion.div className="account-card" variants={itemVariants}>
@@ -118,9 +200,7 @@ const MyAccountTab = () => {
           <div className="account-info">
             <h2>{adminProfile.name}</h2>
             <p className="account-role">{adminProfile.role}</p>
-            <p className="account-meta"><i className="fa-solid fa-calendar"></i> Member since {adminProfile.joinDate}</p>
-            <p className="account-meta"><i className="fa-solid fa-clock"></i> Last login: {adminProfile.lastLogin}</p>
-          </div>
+            </div>
         </div>
         <div className="account-details">
           <div className="detail-group">
@@ -143,7 +223,7 @@ const MyAccountTab = () => {
           </div>
         </div>
 
-        {/* 🔴 أزرار العمليات (تم إضافة زر تسجيل الخروج هنا) */}
+        {/* 🔴 أزرار العمليات (تم إضافة زر تغيير كلمة سر الريسبشن) */}
         <div className="account-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <motion.button 
             className="btn-secondary" 
@@ -152,6 +232,28 @@ const MyAccountTab = () => {
             onClick={() => setShowModal(true)}
           >
             <i className="fa-solid fa-key"></i> Change Password
+          </motion.button>
+
+          {/* 🔴 زر تغيير كلمة سر الريسبشن */}
+          <motion.button 
+            className="btn-secondary" 
+            style={{ 
+              backgroundColor: '#4caf50', 
+              color: '#fff', 
+              border: 'none', 
+              padding: '10px 20px', 
+              borderRadius: '12px', 
+              cursor: 'pointer',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            whileHover={{ scale: 1.03 }} 
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowReceptionModal(true)}
+          >
+            <i className="fa-solid fa-user-shield"></i> Change Reception Password
           </motion.button>
 
           <motion.button 
@@ -177,6 +279,7 @@ const MyAccountTab = () => {
         </div>
       </motion.div>
 
+      {/* ─── Modal: Admin Change Password ─── */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <motion.div 
@@ -186,7 +289,7 @@ const MyAccountTab = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h3><i className="fa-solid fa-key"></i> Change Password</h3>
-            
+
             {message && (
               <div className={`alert alert-${message.type}`}>
                 {message.text}
@@ -204,7 +307,7 @@ const MyAccountTab = () => {
                   required
                 />
               </div>
-              
+
               <div className="form-group">
                 <label>New Password</label>
                 <input
@@ -215,7 +318,7 @@ const MyAccountTab = () => {
                   required
                 />
               </div>
-              
+
               <div className="form-group">
                 <label>Confirm New Password</label>
                 <input
@@ -233,6 +336,59 @@ const MyAccountTab = () => {
                 </button>
                 <button type="submit" className="btn-primary" disabled={loading}>
                   {loading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ─── Modal: Reception Change Password ─── */}
+      {showReceptionModal && (
+        <div className="modal-overlay" onClick={() => setShowReceptionModal(false)}>
+          <motion.div 
+            className="modal-content"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3><i className="fa-solid fa-user-shield"></i> Change Reception Password</h3>
+
+            {receptionMessage && (
+              <div className={`alert alert-${receptionMessage.type}`}>
+                {receptionMessage.text}
+              </div>
+            )}
+
+            <form onSubmit={handleReceptionSubmit}>
+              <div className="form-group">
+                <label>New Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={receptionFormData.password}
+                  onChange={handleReceptionChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Confirm New Password</label>
+                <input
+                  type="password"
+                  name="password_confirmation"
+                  value={receptionFormData.password_confirmation}
+                  onChange={handleReceptionChange}
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowReceptionModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={receptionLoading}>
+                  {receptionLoading ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>

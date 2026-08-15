@@ -14,8 +14,8 @@ export function AuthProvider({ children }) {
 
   const login = async (phoneNumber, password, role) => {
     const endpoint = role === 'admin' 
-      ? 'http://127.0.0.1:8000/api/loginAdmin' 
-      : 'http://127.0.0.1:8000/api/loginReceptionist';
+      ? 'https://kidcare.sy/api/loginAdmin' 
+      : 'https://kidcare.sy/api/loginReceptionist';
 
     try {
       const response = await fetch(endpoint, {

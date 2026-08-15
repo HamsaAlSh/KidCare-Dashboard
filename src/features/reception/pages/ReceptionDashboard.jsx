@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Clock } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import DashboardTab from '../tabs/DashboardTab';
 import AppointmentsTab from '../tabs/AppointmentsTab';
-import AddAccountTab from '../tabs/AddAccountTab';
+import AddAccountTab from '../tabs/ParentsTab';
 import RevenueTab from '../tabs/RevenueTab';
 import SettingsTab from '../tabs/SettingsTab';
-import MyAccountTab from '../tabs/MyAccountTab';
 import { appointments } from '../data/appointments';
 import './ReceptionDashboard.css';
 
@@ -15,7 +15,22 @@ const pageTitles = {
   'add-account': 'Add Account',
   revenue: 'Daily Revenue',
   settings: 'Settings',
-  account: 'My Account',
+};
+
+const LiveClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="date-display" style={{ display: 'flex', alignItems: 'center', gap: 8, fontVariantNumeric: 'tabular-nums' }}>
+      <Clock size={14} />
+      {time.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} &bull; {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    </div>
+  );
 };
 
 export default function ReceptionDashboard() {
@@ -35,9 +50,6 @@ export default function ReceptionDashboard() {
     }
   }, [showToast]);
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
   return (
     <div className="app-container">
       <Sidebar activePage={activePage} onPageChange={setActivePage} />
@@ -46,7 +58,7 @@ export default function ReceptionDashboard() {
         <header className="top-bar">
           <div className="page-title">{pageTitles[activePage]}</div>
           <div className="top-bar-actions">
-            <div className="date-display">{dateStr}</div>
+            <LiveClock />
             <button className="icon-btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -62,7 +74,6 @@ export default function ReceptionDashboard() {
         {activePage === 'add-account' && <AddAccountTab onToast={showToast} />}
         {activePage === 'revenue' && <RevenueTab />}
         {activePage === 'settings' && <SettingsTab />}
-        {activePage === 'account' && <MyAccountTab />}
       </main>
 
       {toast && (

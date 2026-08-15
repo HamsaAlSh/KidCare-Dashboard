@@ -1,8 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarDays, CheckCircle, DollarSign, Users, Clock, TrendingUp } from 'lucide-react';
-import { appointments } from '../data/appointments';
-import AppointmentRow from '../components/AppointmentRow';
+import { 
+  CalendarDays, 
+  DollarSign, 
+  Clock, 
+  TrendingUp,
+  Users,
+  Wallet,
+  CreditCard,
+  Loader2,
+  AlertCircle,
+  ChevronDown,
+  Calendar,
+  History,
+  User
+} from 'lucide-react';
+import api from '../../../api/axios.js'; 
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -15,265 +28,664 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
+const colorMap = {
+  blue: { bg: 'rgba(79,195,247,0.1)', icon: '#4FC3F7', bar: '#4FC3F7' },
+  green: { bg: 'rgba(102,187,106,0.1)', icon: '#66BB6A', bar: '#66BB6A' },
+  purple: { bg: 'rgba(171,71,188,0.1)', icon: '#AB47BC', bar: '#AB47BC' },
+  cyan: { bg: 'rgba(79,195,247,0.1)', icon: '#29B6F6', bar: '#29B6F6' },
+  orange: { bg: 'rgba(255,152,0,0.1)', icon: '#FF9800', bar: '#FF9800' },
+  pink: { bg: 'rgba(244,143,177,0.1)', icon: '#F48FB1', bar: '#F48FB1' },
+};
+
 const AnimatedNumber = ({ value, prefix = '', suffix = '' }) => {
   const [displayValue, setDisplayValue] = useState(0);
+  const timerRef = useRef(null);
+
   useEffect(() => {
+    if (value === 0) {
+      setDisplayValue(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    if (timerRef.current) clearInterval(timerRef.current);
+
     const duration = 1500, steps = 60;
     const increment = value / steps;
     let current = 0;
-    const timer = setInterval(() => {
+
+    timerRef.current = setInterval(() => {
       current += increment;
       if (current >= value) {
         setDisplayValue(value);
-        clearInterval(timer);
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       } else {
         setDisplayValue(Math.floor(current));
       }
     }, duration / steps);
-    return () => clearInterval(timer);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [value]);
+
   return <span>{prefix}{displayValue.toLocaleString('en-US')}{suffix}</span>;
 };
 
-export default function DashboardTab() {
-  const [stats, setStats] = useState({ total: 0, completed: 0, revenue: 0, new: 0 });
-  const [currentTime, setCurrentTime] = useState(new Date());
+const LiveClock = () => {
+  const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const completed = appointments.filter(a => a.status === 'completed');
-    const paid = appointments.filter(a => a.paid);
-    setStats({
-      total: appointments.length,
-      completed: completed.length,
-      revenue: paid.reduce((s, a) => s + a.amount, 0),
-      new: appointments.filter(a => a.id > 8).length,
-    });
-
-    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(clock);
+    const id = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
-  const current = appointments.filter(a => a.status === 'current');
-  const upcoming = appointments.filter(a => a.status === 'upcoming');
+  return (
+    <div className="date-display" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Clock size={14} />
+      {time.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} &bull; {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+    </div>
+  );
+};
 
-  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-  const paidCount = appointments.filter(a => a.paid).length;
-  const paymentRate = stats.total > 0 ? Math.round((paidCount / stats.total) * 100) : 0;
+const fmt = (n) => (n ?? 0).toLocaleString('en-US');
+
+const fetchWithRetry = async (url, retries = 2, signal) => {
+  try {
+    return await api.get(url, { signal });
+  } catch (err) {
+    if (retries > 0 && !api.isCancel?.(err) && err.name !== 'AbortError' && err.name !== 'CanceledError') {
+      return fetchWithRetry(url, retries - 1, signal);
+    }
+    throw err;
+  }
+};
+
+export default function DashboardTab() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [appointmentsCount, setAppointmentsCount] = useState(0);
+  const [revenueData, setRevenueData] = useState({
+    total_revenue: 0,
+    clinic_net_profit: 0,
+    clinic_additions_profit: 0,
+    doctors_total_payout: 0,
+    breakdown_by_method: { online_stripe: 0, cash_reception: 0 },
+    breakdown_by_type: { fixed_appointments: 0, additions_total: 0 },
+  });
+  const [newChildrenCount, setNewChildrenCount] = useState(0);
+
+  // ✅ حالة المواعيد
+  const [children, setChildren] = useState([]);
+  const [selectedChild, setSelectedChild] = useState(null);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [pastAppointments, setPastAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState('');
+
+  const abortControllerRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  const fetchDashboardData = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [appointmentsRes, revenueRes, childrenRes] = await Promise.all([
+        fetchWithRetry('/home/appointments-count', 2, controller.signal),
+        fetchWithRetry('/daily-revenue', 2, controller.signal),
+        fetchWithRetry('/home/today-children-count', 2, controller.signal),
+      ]);
+
+      setAppointmentsCount(appointmentsRes.data?.data?.today_appointments_count || 0);
+      setRevenueData(revenueRes.data?.data || {
+        total_revenue: 0,
+        clinic_net_profit: 0,
+        clinic_additions_profit: 0,
+        doctors_total_payout: 0,
+        breakdown_by_method: { online_stripe: 0, cash_reception: 0 },
+        breakdown_by_type: { fixed_appointments: 0, additions_total: 0 },
+      });
+      setNewChildrenCount(childrenRes.data?.data?.today_added_children_count || 0);
+    } catch (err) {
+      if (api.isCancel?.(err) || err.name === 'AbortError' || err.name === 'CanceledError') {
+        return;
+      }
+
+      console.error('Dashboard data fetch error:', err);
+
+      if (err.response?.status === 500) {
+        setError({ type: 'server', message: 'Server error (500). Please check Laravel logs.' });
+      } else if (err.response?.status >= 400 && err.response?.status !== 401) {
+        setError({ type: 'client', message: err.response?.data?.message || 'Failed to load dashboard data.' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ جيب قائمة الأطفال
+  const fetchChildren = useCallback(async () => {
+    try {
+      const res = await api.get('/children');
+      setChildren(res.data?.children || []);
+    } catch (err) {
+      console.error('Failed to fetch children:', err);
+    }
+  }, []);
+
+  // ✅ جيب مواعيد الطفل المختار
+  const fetchChildAppointments = useCallback(async (childId) => {
+    if (!childId) return;
+    
+    setAppointmentsLoading(true);
+    setAppointmentsError('');
+
+    try {
+      const [upcomingRes, pastRes] = await Promise.all([
+        api.get(`/appointments/upcoming/${childId}`),
+        api.get(`/appointments/past/${childId}`),
+      ]);
+
+      setUpcomingAppointments(upcomingRes.data?.appointments || []);
+      setPastAppointments(pastRes.data?.appointments || []);
+    } catch (err) {
+      setAppointmentsError(err.response?.data?.message || 'Failed to load appointments');
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchChildren();
+
+    intervalRef.current = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, [fetchDashboardData, fetchChildren]);
+
+  // ✅ لما يتغير الطفل المختار
+  useEffect(() => {
+    if (selectedChild) {
+      fetchChildAppointments(selectedChild.id);
+    } else {
+      setUpcomingAppointments([]);
+      setPastAppointments([]);
+    }
+  }, [selectedChild, fetchChildAppointments]);
+
+  const {
+    total_revenue = 0,
+    clinic_net_profit = 0,
+    clinic_additions_profit = 0,
+    doctors_total_payout = 0,
+    breakdown_by_method = { online_stripe: 0, cash_reception: 0 },
+    breakdown_by_type = { fixed_appointments: 0, additions_total: 0 },
+  } = revenueData || {};
+
+  const netProfitProgress = useMemo(() => {
+    return total_revenue > 0 ? Math.min((clinic_net_profit / total_revenue) * 100, 100) : 0;
+  }, [total_revenue, clinic_net_profit]);
+
+  const payoutProgress = useMemo(() => {
+    return total_revenue > 0 ? Math.min((doctors_total_payout / total_revenue) * 100, 100) : 0;
+  }, [total_revenue, doctors_total_payout]);
+
+  const totalMethods = useMemo(() => {
+    return (breakdown_by_method?.online_stripe || 0) + (breakdown_by_method?.cash_reception || 0);
+  }, [breakdown_by_method]);
+
+  const getChildImage = (child) => {
+    if (child?.image && !child.image.includes('girl.png') && !child.image.includes('boy.png')) {
+      return child.image;
+    }
+    return child?.gender === 'male' 
+      ? 'https://kidcare.sy/images/boy.png' 
+      : 'https://kidcare.sy/images/girl.png';
+  };
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
   return (
-    <motion.div className="dashboard-grid-content" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
-
-      {/* Page Header */}
-      <motion.div className="page-header" variants={itemVariants}>
-        <div className="header-greeting">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-            <div style={{
-              width: 50,
-              height: 50,
-              borderRadius: 16,
-              background: 'linear-gradient(135deg, #4FC3F7, #81D4FA)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 15px rgba(79, 195, 247, 0.3)',
-              flexShrink: 0,
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-              </svg>
-            </div>
-            <div>
-              <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #1565C0 0%, #4FC3F7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: 1.2 }}>
-                KidCare Clinic
-              </h1>
-              <p style={{ color: '#90A4AE', fontSize: 14, margin: '4px 0 0', fontWeight: 600 }}>
-                Reception Dashboard
-              </p>
-            </div>
+    <motion.div 
+      className="dashboard-grid-content" 
+      variants={containerVariants} 
+      initial="hidden" 
+      animate="visible" 
+      exit="exit"
+    >
+      {/* Error Banner */}
+      {error && (
+        <motion.div 
+          variants={itemVariants}
+          style={{ 
+            background: error.type === 'server' ? '#fff3e0' : '#ffebee', 
+            color: error.type === 'server' ? '#e65100' : '#c62828', 
+            padding: '16px 20px', 
+            borderRadius: 12,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            border: `1px solid ${error.type === 'server' ? '#ffe0b2' : '#ffcdd2'}`,
+          }}
+        >
+          <AlertCircle size={20} />
+          <div>
+            <strong style={{ fontSize: 14 }}>
+              {error.type === 'server' ? 'Server Error' : 'Error'}
+            </strong>
+            <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.9 }}>
+              {error.message}
+            </p>
           </div>
-        </div>
-        <div className="date-display" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Clock size={14} />
-          {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} &bull; {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-        </div>
-      </motion.div>
-
-      {/* Quick Stats Grid */}
-      <motion.section className="quick-stats-grid" variants={itemVariants}>
-        <QuickStatCard
-          icon={CalendarDays}
-          label="Total Appointments"
-          value={<AnimatedNumber value={stats.total} />}
-          trend={`+${stats.new} new today`}
-          trendType="positive"
-          color="blue"
-        />
-        <QuickStatCard
-          icon={CheckCircle}
-          label="Completed"
-          value={<AnimatedNumber value={stats.completed} />}
-          trend={`${completionRate}% completion rate`}
-          trendType="positive"
-          color="green"
-        />
-        <QuickStatCard
-          icon={DollarSign}
-          label="Today's Revenue"
-          value={<AnimatedNumber value={stats.revenue} prefix="$" />}
-          trend={`${paidCount} payments received`}
-          trendType="positive"
-          color="purple"
-        />
-        <QuickStatCard
-          icon={Users}
-          label="New Patients"
-          value={<AnimatedNumber value={stats.new} />}
-          trend="This week"
-          trendType="neutral"
-          color="cyan"
-        />
-      </motion.section>
-
-      {/* Financial Overview & Performance Stats */}
-      <motion.section className="dashboard-stats-wrapper" variants={containerVariants}>
-
-        {/* Financial Overview */}
-        <motion.div className="stats-column" variants={itemVariants}>
-          <h3 className="section-title">Financial Overview</h3>
-
-          <StatCard
-            title="Today's Revenue"
-            value={`$${stats.revenue.toLocaleString('en-US')}`}
-            sub={`${paidCount} paid appointments out of ${stats.total}`}
-            progress={paymentRate}
-            icon={DollarSign}
-            color="blue"
-          />
-
-          <StatCard
-            title="Completion Rate"
-            value={`${completionRate}%`}
-            sub={`${stats.completed} of ${stats.total} appointments completed`}
-            progress={completionRate}
-            icon={CheckCircle}
-            color="green"
-          />
         </motion.div>
+      )}
 
-        {/* Performance Stats */}
-        <motion.div className="stats-column" variants={itemVariants}>
-          <h3 className="section-title">Performance Stats</h3>
-
-          <StatCard
-            title="New Patients"
-            value={stats.new}
-            sub="New registrations this week"
-            progress={Math.min((stats.new / 20) * 100, 100)}
-            icon={Users}
-            color="purple"
-          />
-
-          <StatCard
-            title="Total Appointments"
-            value={stats.total}
-            sub="Scheduled for today"
-            progress={100}
-            icon={CalendarDays}
-            color="cyan"
-          />
+      {/* Loading State */}
+      {loading ? (
+        <motion.div 
+          variants={itemVariants}
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            padding: '80px 20px',
+            gap: 16,
+            color: '#90A4AE'
+          }}
+        >
+          <Loader2 size={40} style={{ animation: 'spin 1s linear infinite' }} />
+          <p style={{ fontSize: 16, fontWeight: 500 }}>Loading dashboard data...</p>
         </motion.div>
-      </motion.section>
+      ) : (
+        <>
+          {/* Quick Stats Grid */}
+          <motion.section className="quick-stats-grid" variants={itemVariants}>
+            <QuickStatCard
+              icon={CalendarDays}
+              label="Total Appointments"
+              value={<AnimatedNumber value={appointmentsCount} />}
+              trend="Today"
+              trendType="neutral"
+              color="blue"
+            />
+            <QuickStatCard
+              icon={Users}
+              label="New Children"
+              value={<AnimatedNumber value={newChildrenCount} />}
+              trend="Added today"
+              trendType="neutral"
+              color="cyan"
+            />
+            <QuickStatCard
+              icon={DollarSign}
+              label="Today's Revenue"
+              value={<AnimatedNumber value={total_revenue} prefix="$" />}
+              trend={`Net: $${fmt(clinic_net_profit)}`}
+              trendType="positive"
+              color="purple"
+            />
+            <QuickStatCard
+              icon={Wallet}
+              label="Doctors Payout"
+              value={<AnimatedNumber value={doctors_total_payout} prefix="$" />}
+              trend="Total earnings"
+              trendType="neutral"
+              color="orange"
+            />
+          </motion.section>
 
-      {/* Appointments Section */}
-      <motion.section className="dashboard-section" variants={itemVariants}>
-        <div className="section-header">
-          <h2 className="section-title">Appointments</h2>
-          <span className="badge-count pulse-badge">{appointments.length}</span>
-        </div>
+          {/* Financial Overview & Payouts */}
+          <motion.section className="dashboard-stats-wrapper" variants={containerVariants}>
+            <motion.div className="stats-column" variants={itemVariants}>
+              <h3 className="section-title">Financial Overview</h3>
 
-        <div className="content-grid">
-          {/* Current Appointments */}
-          <motion.div className="content-card" variants={itemVariants}>
-            <div className="card-header">
-              <h3 className="card-title">Current Appointment</h3>
-              <span className="badge badge-current">Live</span>
+              <StatCard
+                title="Total Revenue"
+                value={`$${fmt(total_revenue)}`}
+                sub={`Fixed: $${fmt(breakdown_by_type.fixed_appointments)} | Additions: $${fmt(breakdown_by_type.additions_total)}`}
+                progress={total_revenue > 0 ? 100 : 0}
+                icon={DollarSign}
+                color="blue"
+              />
+
+              <StatCard
+                title="Clinic Net Profit"
+                value={`$${fmt(clinic_net_profit)}`}
+                sub={`Additions profit: $${fmt(clinic_additions_profit)}`}
+                progress={netProfitProgress}
+                icon={TrendingUp}
+                color="green"
+              />
+            </motion.div>
+
+            <motion.div className="stats-column" variants={itemVariants}>
+              <h3 className="section-title">Payouts & Methods</h3>
+
+              <StatCard
+                title="Doctors Payout"
+                value={`$${fmt(doctors_total_payout)}`}
+                sub="Total doctors earnings today"
+                progress={payoutProgress}
+                icon={Wallet}
+                color="orange"
+              />
+
+              <StatCard
+                title="Payment Methods"
+                value={`$${fmt(totalMethods)}`}
+                sub={`Online: $${fmt(breakdown_by_method.online_stripe)} | Cash: $${fmt(breakdown_by_method.cash_reception)}`}
+                progress={total_revenue > 0 ? 100 : 0}
+                icon={CreditCard}
+                color="purple"
+              />
+            </motion.div>
+          </motion.section>
+
+          {/* ✅ قسم المواعيد */}
+          <motion.section 
+            className="appointments-section" 
+            variants={itemVariants}
+            style={{ marginTop: 24 }}
+          >
+            <div className="section-header" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: 20 
+            }}>
+              <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Calendar size={20} />
+                Child Appointments
+              </h3>
             </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Patient</th>
-                    <th>Doctor</th>
-                    <th>Time</th>
-                    <th>Payment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {current.length ? (
-                    current.map(a => <AppointmentRow key={a.id} apt={a} />)
-                  ) : (
-                    <tr>
-                      <td colSpan="4">
-                        <div className="empty-state">
-                          <CalendarDays size={48} style={{ opacity: 0.4, color: '#81D4FA' }} />
-                          <p>No current appointments</p>
+
+            {/* ✅ Dropdown لاختيار الطفل */}
+            <div className="child-selector" style={{ marginBottom: 20 }}>
+              <div style={{ position: 'relative', maxWidth: 400 }}>
+                <User size={16} style={{ 
+                  position: 'absolute', 
+                  left: 12, 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: '#90A4AE',
+                  zIndex: 1
+                }} />
+                <select
+                  value={selectedChild?.id || ''}
+                  onChange={(e) => {
+                    const child = children.find(c => c.id === parseInt(e.target.value));
+                    setSelectedChild(child || null);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px 12px 40px',
+                    borderRadius: 12,
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    appearance: 'none',
+                  }}
+                >
+                  <option value="">Select a child...</option>
+                  {children.map(child => (
+                    <option key={child.id} value={child.id}>
+                      {child.first_name} {child.last_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} style={{ 
+                  position: 'absolute', 
+                  right: 12, 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: '#90A4AE',
+                  pointerEvents: 'none'
+                }} />
+              </div>
+            </div>
+
+            {appointmentsError && (
+              <div className="alert alert-error" style={{ marginBottom: 16 }}>
+                {appointmentsError}
+              </div>
+            )}
+
+            {appointmentsLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 40, justifyContent: 'center' }}>
+                <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Loading appointments...</span>
+              </div>
+            ) : selectedChild ? (
+              <div className="appointments-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                {/* ✅ المواعيد القادمة */}
+                <motion.div 
+                  className="appointment-column"
+                  variants={itemVariants}
+                  style={{
+                    background: 'var(--card-bg)',
+                    borderRadius: 16,
+                    padding: 20,
+                    border: '1px solid var(--border-color)',
+                  }}
+                >
+                  <h4 style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 8, 
+                    marginBottom: 16,
+                    color: '#4FC3F7',
+                    fontSize: 16
+                  }}>
+                    <Calendar size={18} />
+                    Upcoming Appointments
+                    <span style={{ 
+                      background: 'rgba(79,195,247,0.15)', 
+                      color: '#4FC3F7',
+                      padding: '2px 10px',
+                      borderRadius: 12,
+                      fontSize: 12
+                    }}>
+                      {upcomingAppointments.length}
+                    </span>
+                  </h4>
+
+                  {upcomingAppointments.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {upcomingAppointments.map(apt => (
+                        <div 
+                          key={apt.id} 
+                          className="appointment-card"
+                          style={{
+                            padding: 16,
+                            borderRadius: 12,
+                            background: 'rgba(79,195,247,0.05)',
+                            border: '1px solid rgba(79,195,247,0.15)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                            <img 
+                              src={getChildImage(apt.child)} 
+                              alt={apt.child?.first_name}
+                              style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                            <div>
+                              <p style={{ fontWeight: 600, fontSize: 14 }}>{apt.child?.first_name}</p>
+                              <p style={{ fontSize: 12, color: '#90A4AE' }}>Dr. {apt.doctor?.full_name}</p>
+                            </div>
+                            <span style={{ 
+                              marginLeft: 'auto',
+                              padding: '4px 12px',
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 500,
+                              background: apt.status === 'Confirmed' ? 'rgba(102,187,106,0.15)' : 'rgba(255,152,0,0.15)',
+                              color: apt.status === 'Confirmed' ? '#66BB6A' : '#FF9800',
+                            }}>
+                              {apt.status}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#90A4AE' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CalendarDays size={14} />
+                              {formatDate(apt.date)}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Clock size={14} />
+                              {apt.time}
+                            </span>
+                            <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#4FC3F7' }}>
+                              ${apt.price}
+                            </span>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-
-          {/* Upcoming Appointments */}
-          <motion.div className="content-card" variants={itemVariants}>
-            <div className="card-header">
-              <h3 className="card-title">Upcoming Appointments</h3>
-              <span className="badge badge-upcoming">{upcoming.length} Pending</span>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Patient</th>
-                    <th>Doctor</th>
-                    <th>Time</th>
-                    <th>Payment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {upcoming.length ? (
-                    upcoming.map(a => <AppointmentRow key={a.id} apt={a} />)
+                      ))}
+                    </div>
                   ) : (
-                    <tr>
-                      <td colSpan="4">
-                        <div className="empty-state">
-                          <CalendarDays size={48} style={{ opacity: 0.4, color: '#81D4FA' }} />
-                          <p>No upcoming appointments</p>
-                        </div>
-                      </td>
-                    </tr>
+                    <p style={{ textAlign: 'center', color: '#90A4AE', padding: 20 }}>
+                      No upcoming appointments
+                    </p>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-        </div>
-      </motion.section>
+                </motion.div>
+
+                {/* ✅ المواعيد السابقة */}
+                <motion.div 
+                  className="appointment-column"
+                  variants={itemVariants}
+                  style={{
+                    background: 'var(--card-bg)',
+                    borderRadius: 16,
+                    padding: 20,
+                    border: '1px solid var(--border-color)',
+                  }}
+                >
+                  <h4 style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 8, 
+                    marginBottom: 16,
+                    color: '#AB47BC',
+                    fontSize: 16
+                  }}>
+                    <History size={18} />
+                    Past Appointments
+                    <span style={{ 
+                      background: 'rgba(171,71,188,0.15)', 
+                      color: '#AB47BC',
+                      padding: '2px 10px',
+                      borderRadius: 12,
+                      fontSize: 12
+                    }}>
+                      {pastAppointments.length}
+                    </span>
+                  </h4>
+
+                  {pastAppointments.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {pastAppointments.map(apt => (
+                        <div 
+                          key={apt.id} 
+                          className="appointment-card"
+                          style={{
+                            padding: 16,
+                            borderRadius: 12,
+                            background: 'rgba(171,71,188,0.05)',
+                            border: '1px solid rgba(171,71,188,0.15)',
+                            opacity: 0.85,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                            <img 
+                              src={getChildImage(apt.child)} 
+                              alt={apt.child?.first_name}
+                              style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                            <div>
+                              <p style={{ fontWeight: 600, fontSize: 14 }}>{apt.child?.first_name}</p>
+                              <p style={{ fontSize: 12, color: '#90A4AE' }}>Dr. {apt.doctor?.full_name}</p>
+                            </div>
+                            <span style={{ 
+                              marginLeft: 'auto',
+                              padding: '4px 12px',
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 500,
+                              background: apt.status === 'Completed' ? 'rgba(102,187,106,0.15)' : 'rgba(239,83,80,0.15)',
+                              color: apt.status === 'Completed' ? '#66BB6A' : '#EF5350',
+                            }}>
+                              {apt.status}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#90A4AE' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CalendarDays size={14} />
+                              {formatDate(apt.date)}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Clock size={14} />
+                              {apt.time}
+                            </span>
+                            <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#AB47BC' }}>
+                              ${apt.price}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: 'center', color: '#90A4AE', padding: 20 }}>
+                      No past appointments
+                    </p>
+                  )}
+                </motion.div>
+              </div>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: 60, 
+                color: '#90A4AE',
+                background: 'var(--card-bg)',
+                borderRadius: 16,
+                border: '1px dashed var(--border-color)',
+              }}>
+                <User size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
+                <p>Select a child to view their appointments</p>
+              </div>
+            )}
+          </motion.section>
+        </>
+      )}
     </motion.div>
   );
 }
 
 function QuickStatCard({ icon: Icon, label, value, trend, trendType, color }) {
-  const colorMap = {
-    blue: { bg: 'rgba(79,195,247,0.1)', icon: '#4FC3F7', bar: '#4FC3F7' },
-    green: { bg: 'rgba(102,187,106,0.1)', icon: '#66BB6A', bar: '#66BB6A' },
-    purple: { bg: 'rgba(171,71,188,0.1)', icon: '#AB47BC', bar: '#AB47BC' },
-    cyan: { bg: 'rgba(79,195,247,0.1)', icon: '#29B6F6', bar: '#29B6F6' },
-    orange: { bg: 'rgba(255,152,0,0.1)', icon: '#FF9800', bar: '#FF9800' },
-    pink: { bg: 'rgba(244,143,177,0.1)', icon: '#F48FB1', bar: '#F48FB1' },
-  };
   const c = colorMap[color] || colorMap.blue;
 
   return (
@@ -294,14 +706,6 @@ function QuickStatCard({ icon: Icon, label, value, trend, trendType, color }) {
 }
 
 function StatCard({ icon: Icon, title, value, sub, progress, color }) {
-  const colorMap = {
-    blue: { bg: 'rgba(79,195,247,0.1)', icon: '#4FC3F7', bar: '#4FC3F7' },
-    green: { bg: 'rgba(102,187,106,0.1)', icon: '#66BB6A', bar: '#66BB6A' },
-    purple: { bg: 'rgba(171,71,188,0.1)', icon: '#AB47BC', bar: '#AB47BC' },
-    cyan: { bg: 'rgba(79,195,247,0.1)', icon: '#29B6F6', bar: '#29B6F6' },
-    orange: { bg: 'rgba(255,152,0,0.1)', icon: '#FF9800', bar: '#FF9800' },
-    pink: { bg: 'rgba(244,143,177,0.1)', icon: '#F48FB1', bar: '#F48FB1' },
-  };
   const c = colorMap[color] || colorMap.blue;
 
   return (
@@ -314,7 +718,7 @@ function StatCard({ icon: Icon, title, value, sub, progress, color }) {
         <p className="stat-val">{value}</p>
         <span className="stat-sub">{sub}</span>
         <div className="progress-bar-kidcare">
-          <div className="progress-fill" style={{ width: `${progress}%`, background: c.bar }}></div>
+          <div className="progress-fill" style={{ width: `${Math.max(0, Math.min(100, progress))}%`, background: c.bar }}></div>
         </div>
       </div>
     </motion.div>

@@ -10,11 +10,11 @@ const saveDoctors = (doctors) => {
   localStorage.setItem('kidcare_doctors', JSON.stringify(doctors));
 };
 
+// ✅ فقط id و name - الباقي غير مستخدم
 const departmentsData = [
-  { id: 1, name: 'Pediatrics', head: 'Dr. Mohammed Ali', doctors: 12, patients: 450, capacity: 500, occupancy: 90, color: '#4FC3F7' },
-  { id: 2, name: 'Dentistry', head: 'Dr. Fatima Hassan', doctors: 8, patients: 280, capacity: 300, occupancy: 93, color: '#EF5350' },
-  { id: 3, name: 'Psychiatry', head: 'Dr. Layla Omar', doctors: 6, patients: 150, capacity: 200, occupancy: 75, color: '#AB47BC' },
-  { id: 5, name: 'Vaccination', head: 'Dr. Ahmed Khalid', doctors: 7, patients: 220, capacity: 280, occupancy: 79, color: '#66BB6A' },
+  { id: 1, name: 'Pediatrics' },
+  { id: 2, name: 'Dentistry' },
+  { id: 3, name: 'Psychiatry' },
 ];
 
 const AddDoctorModal = ({
@@ -103,7 +103,7 @@ const AddDoctorModal = ({
                   {errors.last_name && <span className="error-text">{errors.last_name}</span>}
                 </div>
               </div>
-              
+
                <div className="form-group">
   <label>Gender <span className="required">*</span></label>
   <select

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import axios from "../../../api/axios";
+import { normalizeDoctor } from "../tabs/DoctorsTab";
 
 const api = axios.create({
   baseURL: '/api',
@@ -57,24 +58,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     return `${first}${last}`.toUpperCase();
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Available': return '#22c55e';
-      case 'Busy': return '#ef4444';
-      case 'Out of Schedule': return '#6a6a8a';
-      default: return '#9E9E9E';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'Available': return 'Available';
-      case 'Busy': return 'Busy';
-      case 'Out of Schedule': return 'Offline';
-      default: return 'Unknown';
-    }
-  };
-
   const formatTime = (time) => {
     if (!time) return '';
     const [hours, minutes] = time.split(':');
@@ -86,6 +69,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
   const formatDay = (day) => day;
 
+  // ✅ فقط الحقول القابلة للتعديل حسب Backend (updateProfile)
   const startEditing = () => {
     setEditData({
       first_name: doctor.first_name || '',
@@ -93,12 +77,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
       phone_number: doctor.phone_number || '',
       email: doctor.email || '',
       address: doctor.address || '',
-      gender: doctor.gender || 'male',
-      education: doctor.education || '',
       experience_years: doctor.experience_years ?? '',
-      fee: doctor.fee ?? '',
-      commission_percentage: doctor.commission_percentage ?? '',
-      department_id: doctor.department?.id ?? '',
     });
     setEditFiles({ profile_picture: null, cv: null });
     setIsEditing(true);
@@ -114,7 +93,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     const { name, value } = e.target;
     setEditData(prev => ({
       ...prev,
-      [name]: name === 'gender' ? value.toLowerCase() : value
+      [name]: value
     }));
   };
 
@@ -130,13 +109,13 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     try {
       const formData = new FormData();
 
-      const fields = [
+      // ✅ فقط الحقول القابلة للتعديل
+      const editableFields = [
         'first_name', 'last_name', 'phone_number', 'email',
-        'address', 'gender', 'education', 'experience_years',
-        'fee', 'commission_percentage', 'department_id'
+        'address', 'experience_years'
       ];
 
-      fields.forEach(key => {
+      editableFields.forEach(key => {
         const value = editData[key];
         if (value === '' || value === null || value === undefined) {
           formData.append(key, '');
@@ -162,9 +141,13 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
       if (response.data.status === 'success') {
         const updatedDoctor = response.data.data;
+
+        // ✅ استخدام normalizeDoctor لضمان توافق البيانات
+        const normalizedUpdatedDoctor = normalizeDoctor(updatedDoctor);
+
         setIsEditing(false);
-        if (onUpdate && updatedDoctor) {
-          onUpdate(updatedDoctor);
+        if (onUpdate && normalizedUpdatedDoctor) {
+          onUpdate(normalizedUpdatedDoctor);
         }
         alert('Doctor updated successfully!');
       } else {
@@ -260,13 +243,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                   <i className="fa-solid fa-stethoscope"></i>
                   {doctor.department?.name || 'General'}
                 </span>
-                <div
-                  className="doctor-status-badge"
-                  style={{ backgroundColor: getStatusColor(doctor.current_status) + '20', color: getStatusColor(doctor.current_status) }}
-                >
-                  <span className="status-dot" style={{ backgroundColor: getStatusColor(doctor.current_status) }}></span>
-                  {getStatusLabel(doctor.current_status)}
-                </div>
               </div>
 
               <button className="modal-close" onClick={onClose}>
@@ -277,6 +253,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
             <div className="doctor-profile-body">
               {isEditing ? (
                 <div className="edit-form">
+                  {/* ✅ قسم المعلومات الشخصية القابلة للتعديل فقط */}
                   <div className="profile-section">
                     <h3><i className="fa-solid fa-user-pen"></i> Edit Personal Information</h3>
                     <div className="info-grid edit-grid">
@@ -287,13 +264,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                       <div className="info-item">
                         <label>Last Name *</label>
                         <input type="text" name="last_name" value={editData.last_name} onChange={handleInputChange} required />
-                      </div>
-                      <div className="info-item">
-                        <label>Gender</label>
-                        <select name="gender" value={editData.gender} onChange={handleInputChange}>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                        </select>
                       </div>
                       <div className="info-item">
                         <label>Phone *</label>
@@ -310,32 +280,18 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                     </div>
                   </div>
 
+                  {/* ✅ قسم المعلومات المهنية القابلة للتعديل فقط */}
                   <div className="profile-section">
                     <h3><i className="fa-solid fa-briefcase-medical"></i> Edit Professional Information</h3>
                     <div className="info-grid edit-grid">
                       <div className="info-item">
-                        <label>Education</label>
-                        <input type="text" name="education" value={editData.education} onChange={handleInputChange} />
-                      </div>
-                      <div className="info-item">
                         <label>Experience (Years)</label>
                         <input type="number" name="experience_years" value={editData.experience_years} onChange={handleInputChange} min="0" />
-                      </div>
-                      <div className="info-item">
-                        <label>Consultation Fee</label>
-                        <input type="number" name="fee" value={editData.fee} onChange={handleInputChange} min="0" />
-                      </div>
-                      <div className="info-item">
-                        <label>Commission (%)</label>
-                        <input type="number" name="commission_percentage" value={editData.commission_percentage} onChange={handleInputChange} min="0" max="100" />
-                      </div>
-                      <div className="info-item">
-                        <label>Department ID</label>
-                        <input type="number" name="department_id" value={editData.department_id} onChange={handleInputChange} min="1" />
                       </div>
                     </div>
                   </div>
 
+                  {/* ✅ قسم الملفات القابلة للتعديل */}
                   <div className="profile-section">
                     <h3><i className="fa-solid fa-folder-open"></i> Update Documents</h3>
                     <div className="documents-grid">
