@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../../api/axios';  
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -25,7 +25,6 @@ const adminProfile = {
 };
 
 const MyAccountTab = () => {
-  // ─── Modal: Admin Change Password ───
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     old_password: '',
@@ -33,7 +32,6 @@ const MyAccountTab = () => {
     confirm_password: '',
   });
 
-  // ─── Modal: Reception Change Password ───
   const [showReceptionModal, setShowReceptionModal] = useState(false);
   const [receptionFormData, setReceptionFormData] = useState({
     password: '',
@@ -45,35 +43,21 @@ const MyAccountTab = () => {
   const [message, setMessage] = useState(null);
   const [receptionMessage, setReceptionMessage] = useState(null);
 
-  // ✅ دالة تسجيل الخروج المربوطة مع API
+  
   const handleLogout = async () => {
     try {
-      const token = sessionStorage.getItem('admin_token');
-      
-      if (token) {
-        await axios.post('https://kidcare.sy/api/admin/logout', {}, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
-      
+      await api.post('/admin/logout');  
     } catch (error) {
       console.error('Logout API error:', error);
-      // ما توقف — كمل امسح البيانات
-      
     } finally {
-      // امسح كل التوكنات والبيانات
       sessionStorage.removeItem('admin_token');
       sessionStorage.removeItem('admin_user');
       sessionStorage.removeItem('reception_token');
       sessionStorage.removeItem('reception_user');
-      
       window.location.href = '/login';
     }
   };
 
-  // ─── Admin Password Handlers ───
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -90,7 +74,6 @@ const MyAccountTab = () => {
     setMessage(null);
 
     try {
-      const token = sessionStorage.getItem('admin_token');
       const user = JSON.parse(sessionStorage.getItem('admin_user') || '{}');
       const phoneNumber = user.phone_number || adminProfile.phone;
 
@@ -99,10 +82,10 @@ const MyAccountTab = () => {
       formDataToSend.append('password', formData.new_password);
       formDataToSend.append('password_confirmation', formData.confirm_password);
 
-      const response = await axios.post('/api/SetAdminPassword', formDataToSend, {
+      
+      const response = await api.post('/SetAdminPassword', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
       });
 
@@ -116,13 +99,6 @@ const MyAccountTab = () => {
     } catch (error) {
       console.log('Error status:', error.response?.status);
       console.log('Error data:', error.response?.data);
-
-      if (error.response?.status === 401) {
-        sessionStorage.removeItem('admin_token');
-        sessionStorage.removeItem('admin_user');
-        window.location.href = '/login';
-        return;
-      }
 
       const errorData = error.response?.data;
       let errorMsg = 'An error occurred';
@@ -141,7 +117,6 @@ const MyAccountTab = () => {
     }
   };
 
-  // ─── Reception Password Handlers ───
   const handleReceptionChange = (e) => {
     setReceptionFormData({ ...receptionFormData, [e.target.name]: e.target.value });
   };
@@ -158,19 +133,16 @@ const MyAccountTab = () => {
     setReceptionMessage(null);
 
     try {
-      const token = sessionStorage.getItem('admin_token');
-
       const params = new URLSearchParams();
       params.append('password', receptionFormData.password);
       params.append('password_confirmation', receptionFormData.password_confirmation);
 
-      const response = await axios.put(
-        'https://kidcare.sy/api/admin/receptionists/1/change-password',
+    
+      const response = await api.put('/admin/receptionists/1/change-password',
         params,
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
           },
         }
       );
@@ -185,13 +157,6 @@ const MyAccountTab = () => {
     } catch (error) {
       console.log('Reception Error status:', error.response?.status);
       console.log('Reception Error data:', error.response?.data);
-
-      if (error.response?.status === 401) {
-        sessionStorage.removeItem('admin_token');
-        sessionStorage.removeItem('admin_user');
-        window.location.href = '/login';
-        return;
-      }
 
       const errorData = error.response?.data;
       let errorMsg = 'An error occurred';
@@ -297,7 +262,6 @@ const MyAccountTab = () => {
         </div>
       </motion.div>
 
-      {/* ─── Modal: Admin Change Password ─── */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <motion.div 
@@ -361,7 +325,6 @@ const MyAccountTab = () => {
         </div>
       )}
 
-      {/* ─── Modal: Reception Change Password ─── */}
       {showReceptionModal && (
         <div className="modal-overlay" onClick={() => setShowReceptionModal(false)}>
           <motion.div 

@@ -12,6 +12,7 @@ import api from "../../../api/axios";
 
 import Sidebar from "../components/Sidebar";
 import AddDoctorModal from "../components/AddDoctorModal";
+import SmartInsights from "../components/SmartInsights";
 import DoctorProfileModal from "../components/DoctorProfileModal";  
 import DashboardTab from "../tabs/DashboardTab";
 import DoctorsTab from "../tabs/DoctorsTab";
@@ -19,6 +20,7 @@ import DepartmentsTab from "../tabs/DepartmentsTab";
 import StatisticsTab from "../tabs/StatisticsTab";
 import MyAccountTab from "../tabs/MyAccountTab";
 import SettingsTab from "../tabs/SettingsTab";
+import SmartInsightsTab from "../tabs/SmartInsightsTab";
 
 import { normalizeDoctor } from "../tabs/DoctorsTab";
 
@@ -85,9 +87,12 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [notificationCount, setNotificationCount] = useState(3);
   const [pendingRequests, setPendingRequests] = useState(initialRequests);
   const [doctorFilter, setDoctorFilter] = useState('all');
   const [selectedDoctorId, setSelectedDoctorId] = useState(1);
+  const [showInsights, setShowInsights] = useState(false);
+  const [insightCount, setInsightCount] = useState(0);
   const [allDoctorsForStats, setAllDoctorsForStats] = useState([]);
   const [departmentsData, setDepartmentsData] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);  
@@ -161,6 +166,14 @@ const AdminDashboard = () => {
   useEffect(() => {
     document.body.classList.toggle('dark-mode', darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('kidcare_insights');
+    if (saved) {
+      const insights = JSON.parse(saved);
+      setInsightCount(insights.filter(i => !i.read).length);
+    }
+  }, [doctorsData, departmentsData]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -351,7 +364,7 @@ const AdminDashboard = () => {
   };
 
   const handleDoctorUpdate = (updatedDoctor) => {
-    // ✅ إعادة تحميل الصفحة بالكامل بعد التعديل
+  
     window.location.reload();
   };
 
@@ -453,10 +466,10 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <div className="request-actions">
-                  <motion.button className="btn-approve" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setPendingRequests(prev => prev.filter(r => r.id !== req.id)); addNotification('Doctor approved successfully!', 'success'); }}>
+                  <motion.button className="btn-approve" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setPendingRequests(prev => prev.filter(r => r.id !== req.id)); addNotification('Doctor approved successfully!', 'success'); setNotificationCount(prev => Math.max(0, prev - 1)); }}>
                     <i className="fa-solid fa-check"></i> Approve
                   </motion.button>
-                  <motion.button className="btn-reject" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setPendingRequests(prev => prev.filter(r => r.id !== req.id)); addNotification('Doctor request rejected.', 'info'); }}>
+                  <motion.button className="btn-reject" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setPendingRequests(prev => prev.filter(r => r.id !== req.id)); addNotification('Doctor request rejected.', 'info'); setNotificationCount(prev => Math.max(0, prev - 1)); }}>
                     <i className="fa-solid fa-xmark"></i> Reject
                   </motion.button>
                 </div>
@@ -516,6 +529,12 @@ const AdminDashboard = () => {
         pendingRequests={pendingRequests} 
         setPendingRequests={setPendingRequests}
         addNotification={addNotification}
+        notificationCount={notificationCount}
+        setNotificationCount={setNotificationCount}
+      />,
+      insights: () => <SmartInsightsTab 
+        doctorsData={doctorsData}
+        departmentsData={departmentsData}
       />,
       doctors: () => <DoctorsTab 
         doctorFilter={doctorFilter} 
@@ -594,6 +613,20 @@ const AdminDashboard = () => {
           ))}
         </AnimatePresence>
       </div>
+
+      <SmartInsights 
+        isOpen={showInsights}
+        onClose={() => setShowInsights(false)}
+        doctorsData={doctorsData}
+        departmentsData={departmentsData}
+        onInsightRead={() => {
+          const saved = localStorage.getItem('kidcare_insights');
+          if (saved) {
+            const insights = JSON.parse(saved);
+            setInsightCount(insights.filter(i => !i.read).length);
+          }
+        }}
+      />
 
       <Sidebar 
         activePage={activePage} 
