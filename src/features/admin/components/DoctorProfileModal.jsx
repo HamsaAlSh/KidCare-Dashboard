@@ -1,31 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 import { normalizeDoctor } from "../tabs/DoctorsTab";
-
-const api = axios.create({
-  baseURL: '/api',
-});
-
-api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('admin_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('admin_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -250,7 +226,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
             <div className="doctor-profile-body">
               {isEditing ? (
                 <div className="edit-form">
-                  {/* ✅ قسم المعلومات الشخصية القابلة للتعديل فقط */}
                   <div className="profile-section">
                     <h3><i className="fa-solid fa-user-pen"></i> Edit Personal Information</h3>
                     <div className="info-grid edit-grid">
@@ -277,7 +252,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* ✅ قسم المعلومات المهنية القابلة للتعديل فقط */}
                   <div className="profile-section">
                     <h3><i className="fa-solid fa-briefcase-medical"></i> Edit Professional Information</h3>
                     <div className="info-grid edit-grid">
@@ -288,7 +262,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* ✅ قسم الملفات القابلة للتعديل */}
                   <div className="profile-section">
                     <h3><i className="fa-solid fa-folder-open"></i> Update Documents</h3>
                     <div className="documents-grid">
