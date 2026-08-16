@@ -2401,3 +2401,9 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   opacity: 0.6;
   cursor: not-allowed;
 }
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

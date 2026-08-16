@@ -364,29 +364,8 @@ const AdminDashboard = () => {
   };
 
   const handleDoctorUpdate = (updatedDoctor) => {
-    if (!updatedDoctor || !updatedDoctor.id) {
-      console.error('Invalid doctor data:', updatedDoctor);
-      return;
-    }
-
-    // ✅ استخدام normalizeDoctor لضمان توافق البيانات
-    const normalizedDoctor = normalizeDoctor(updatedDoctor);
-
-    if (!normalizedDoctor) {
-      console.error('Failed to normalize doctor data:', updatedDoctor);
-      return;
-    }
-
-    setDoctorsData(prev => 
-      prev.map(d => d.id === normalizedDoctor.id ? normalizedDoctor : d)
-    );
-
-    if (selectedDoctor && selectedDoctor.id === normalizedDoctor.id) {
-      setSelectedDoctor(prev => ({
-        ...prev,
-        ...updatedDoctor,
-      }));
-    }
+    // ✅ إعادة تحميل الصفحة بالكامل بعد التعديل
+    window.location.reload();
   };
 
   const handleDeleteDoctor = async (doctorId) => {

@@ -12,11 +12,11 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
-// ✅ جديد — normalize البيانات من أي format
+// ✅ تحسين normalizeDoctor
 const normalizeDoctor = (doctor) => {
   if (!doctor) return null;
 
-  // ✅ بناء full_name من first_name + last_name إذا لم يكن موجوداً
+  // ✅ بناء full_name
   const fullName = doctor.full_name 
     || (doctor.first_name && doctor.last_name 
         ? `${doctor.first_name} ${doctor.last_name}` 
@@ -24,15 +24,61 @@ const normalizeDoctor = (doctor) => {
     || doctor.name 
     || 'Unknown Doctor';
 
+  // ✅ استخراج القسم بشكل ذكي
+  let departmentName = 'No Department';
+  if (typeof doctor.department === 'object' && doctor.department !== null) {
+    departmentName = doctor.department.name || 'No Department';
+  } else if (typeof doctor.department === 'string') {
+    departmentName = doctor.department;
+  } else if (doctor.department_id) {
+    // إذا كان فقط department_id موجوداً، يمكن جلب الاسم لاحقاً
+    departmentName = `Department ${doctor.department_id}`;
+  }
+
+  // ✅ حساب الحالة بشكل ذكي
+  let currentStatus = doctor.current_status || doctor.status;
+
+  if (!currentStatus && doctor.availabilities && doctor.availabilities.length > 0) {
+    // التحقق من تواجد الطبيب اليوم
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const todayAvail = doctor.availabilities.find(
+      a => a.day_of_week?.toLowerCase() === today.toLowerCase()
+    );
+
+    if (todayAvail) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTime = currentHour * 60 + currentMinute;
+
+      const [startHour, startMinute] = (todayAvail.start_time || '00:00').split(':').map(Number);
+      const [endHour, endMinute] = (todayAvail.end_time || '00:00').split(':').map(Number);
+
+      const startTime = startHour * 60 + startMinute;
+      const endTime = endHour * 60 + endMinute;
+
+      if (currentTime >= startTime && currentTime <= endTime) {
+        currentStatus = 'Available';
+      } else {
+        currentStatus = 'Out of Schedule';
+      }
+    } else {
+      currentStatus = 'Out of Schedule';
+    }
+  }
+
+  // ✅ إذا كان هناك مواعيد، نتحقق من الانشغال
+  if (currentStatus === 'Available' && doctor.appointments_count > 0) {
+    currentStatus = 'Busy';
+  }
+
   return {
     id: doctor.id,
     full_name: fullName,
     first_name: doctor.first_name || '',
     last_name: doctor.last_name || '',
-    current_status: doctor.current_status || doctor.status || 'Unknown',
-    department: typeof doctor.department === 'object' 
-      ? doctor.department?.name 
-      : (doctor.department || doctor.specialty || 'No Department'),
+    current_status: currentStatus || 'Unknown',
+    department: departmentName,
     department_id: typeof doctor.department === 'object' 
       ? doctor.department?.id 
       : doctor.department_id,
@@ -78,9 +124,8 @@ const DoctorsTab = ({
     if (!image) return null;
     if (typeof image !== 'string') return null;
     if (image.startsWith('http')) return image;
-    // ✅ لو path نسبي، ضيف الـ base URL
-    const baseUrl = 'http://localhost:8000/storage/'; 
-    return `${baseUrl}${image.replace(/^\/+/, '')}`;
+    const baseUrl = 'https://kidcare.sy/storage/';
+    return `${baseUrl}${image.replace(/^storage\//, '').replace(/^\/+/, '')}`;
   };
 
   const renderAvatar = (doctor) => {

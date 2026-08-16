@@ -330,7 +330,8 @@ const MyAccountTab = () => {
                 />
               </div>
 
-              <div className="modal-actions">
+              {/* ✅ أزرار في سطر واحد */}
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
@@ -383,7 +384,8 @@ const MyAccountTab = () => {
                 />
               </div>
 
-              <div className="modal-actions">
+              {/* ✅ أزرار في سطر واحد */}
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setShowReceptionModal(false)}>
                   Cancel
                 </button>
