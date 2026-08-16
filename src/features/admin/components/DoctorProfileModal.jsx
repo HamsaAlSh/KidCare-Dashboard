@@ -69,7 +69,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
   const formatDay = (day) => day;
 
-  // ✅ فقط الحقول القابلة للتعديل حسب Backend (updateProfile)
   const startEditing = () => {
     setEditData({
       first_name: doctor.first_name || '',
@@ -109,7 +108,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     try {
       const formData = new FormData();
 
-      // ✅ فقط الحقول القابلة للتعديل
       const editableFields = [
         'first_name', 'last_name', 'phone_number', 'email',
         'address', 'experience_years'
@@ -133,7 +131,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
       formData.append('_method', 'PUT');
 
-      const response = await api.put(`/doctors/${doctor.id}`, formData, {
+      const response = await api.post(`/doctors/${doctor.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -142,7 +140,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
       if (response.data.status === 'success') {
         const updatedDoctor = response.data.data;
 
-        // ✅ استخدام normalizeDoctor لضمان توافق البيانات
         const normalizedUpdatedDoctor = normalizeDoctor(updatedDoctor);
 
         setIsEditing(false);
@@ -151,7 +148,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
         }
         alert('Doctor updated successfully!');
       } else {
-        alert('⚠️ ' + (response.data.message || 'Unknown response'));
+        alert( (response.data.message || 'Unknown response'));
       }
     } catch (error) {
       if (error.response) {
