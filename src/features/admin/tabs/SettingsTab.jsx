@@ -23,21 +23,7 @@ const SettingsTab = ({ darkMode, setDarkMode }) => (
           <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
           <span className="toggle-slider"></span>
         </label>
-      </div>
-      <div className="setting-item">
-        <div><h4>Notifications</h4><p>Enable push notifications</p></div>
-        <label className="toggle-switch">
-          <input type="checkbox" defaultChecked />
-          <span className="toggle-slider"></span>
-        </label>
-      </div>
-      <div className="setting-item">
-        <div><h4>Auto-refresh</h4><p>Auto-refresh dashboard data</p></div>
-        <label className="toggle-switch">
-          <input type="checkbox" defaultChecked />
-          <span className="toggle-slider"></span>
-        </label>
-      </div>
+      </div>  
     </motion.div>
   </motion.div>
 );

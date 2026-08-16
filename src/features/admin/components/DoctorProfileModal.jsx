@@ -36,7 +36,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
   if (!doctor) return null;
 
-  const baseUrl = 'http://127.0.0.1:8000';
+  const baseUrl = 'https://kidcare.sy';
 
   const getImageUrl = () => {
     if (doctor.profile_picture) {
