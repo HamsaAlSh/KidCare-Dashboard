@@ -1,36 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../../api/axios';
 import Select from 'react-select';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
-
-const api = axios.create({
-  baseURL: 'https://kidcare.sy/api',
-});
-
-api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('admin_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('admin_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 const containerVariants = {
   hidden: { opacity: 0 },

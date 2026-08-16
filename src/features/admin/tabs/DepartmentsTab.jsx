@@ -1,34 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../../api/axios';
 import {
   PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
-
-// ✅ API Instance برا الـ Component
-const api = axios.create({
-  baseURL: '/api',
-});
-
-api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('admin_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('admin_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Inline animation variants (same as original)
 const containerVariants = {
