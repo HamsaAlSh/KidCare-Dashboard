@@ -133,7 +133,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
       formData.append('_method', 'PUT');
 
-      const response = await api.post(`/doctors/${doctor.id}`, formData, {
+      const response = await api.put(`/doctors/${doctor.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
