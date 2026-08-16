@@ -45,11 +45,32 @@ const MyAccountTab = () => {
   const [message, setMessage] = useState(null);
   const [receptionMessage, setReceptionMessage] = useState(null);
 
-  // 🔴 دالة تسجيل الخروج
-  const handleLogout = () => {
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_user');
-    window.location.href = '/login';
+  // ✅ دالة تسجيل الخروج المربوطة مع API
+  const handleLogout = async () => {
+    try {
+      const token = sessionStorage.getItem('admin_token');
+      
+      if (token) {
+        await axios.post('https://kidcare.sy/api/admin/logout', {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.error('Logout API error:', error);
+      // ما توقف — كمل امسح البيانات
+      
+    } finally {
+      // امسح كل التوكنات والبيانات
+      sessionStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_user');
+      sessionStorage.removeItem('reception_token');
+      sessionStorage.removeItem('reception_user');
+      
+      window.location.href = '/login';
+    }
   };
 
   // ─── Admin Password Handlers ───
@@ -139,7 +160,6 @@ const MyAccountTab = () => {
     try {
       const token = sessionStorage.getItem('admin_token');
 
-      // ✅ استخدام URLSearchParams بدلاً من FormData (x-www-form-urlencoded)
       const params = new URLSearchParams();
       params.append('password', receptionFormData.password);
       params.append('password_confirmation', receptionFormData.password_confirmation);
@@ -223,7 +243,6 @@ const MyAccountTab = () => {
           </div>
         </div>
 
-        {/* 🔴 أزرار العمليات (تم إضافة زر تغيير كلمة سر الريسبشن) */}
         <div className="account-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <motion.button 
             className="btn-secondary" 
@@ -234,7 +253,6 @@ const MyAccountTab = () => {
             <i className="fa-solid fa-key"></i> Change Password
           </motion.button>
 
-          {/* 🔴 زر تغيير كلمة سر الريسبشن */}
           <motion.button 
             className="btn-secondary" 
             style={{ 
@@ -330,7 +348,6 @@ const MyAccountTab = () => {
                 />
               </div>
 
-              {/* ✅ أزرار في سطر واحد */}
               <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>
                   Cancel
@@ -384,7 +401,6 @@ const MyAccountTab = () => {
                 />
               </div>
 
-              {/* ✅ أزرار في سطر واحد */}
               <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setShowReceptionModal(false)}>
                   Cancel
