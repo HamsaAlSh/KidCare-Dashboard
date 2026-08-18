@@ -18,7 +18,8 @@ import {
   Building2,
   CheckCircle2,
   Receipt,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 import api from '../../../api/axios.js'; 
 
@@ -92,10 +93,18 @@ const fetchWithRetry = async (url, retries = 2, signal) => {
 };
 
 export default function DashboardTab() {
-  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  // دالة التاريخ المحلي بدون أخطاء التوقيت العالمي UTC
+  const getTodayDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const [appointmentsCount, setAppointmentsCount] = useState(0);
   const [revenueData, setRevenueData] = useState({
@@ -122,6 +131,24 @@ export default function DashboardTab() {
 
   const abortControllerRef = useRef(null);
   const intervalRef = useRef(null);
+
+  // دالة تسجيل الخروج باستخدام التوجيه المباشر لتفادي خطأ الـ Router
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      const token = localStorage.getItem('receptionist_token') || localStorage.getItem('token');
+      await api.post('/logoutReception', {}, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+    } catch (err) {
+      console.error('Logout error:', err.response?.data || err.message);
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      setLogoutLoading(false);
+      window.location.href = '/login'; // توجيه مباشر ومضمون
+    }
+  };
 
   const fetchDashboardData = useCallback(async () => {
     if (abortControllerRef.current) {
@@ -213,7 +240,6 @@ export default function DashboardTab() {
     }
   }, [selectedDate, fetchAppointmentsByDate]);
 
-  // فتح نافذة المدفوعات
   const handleOpenPaymentModal = async (appointmentId) => {
     setSelectedAppointmentId(appointmentId);
     setLoadingSummary(true);
@@ -228,7 +254,6 @@ export default function DashboardTab() {
     }
   };
 
-  // تنفيذ Check-In ثم فتح النافذة تلقائياً
   const handleCheckInAndOpenPayment = async (appointmentId) => {
     setActionLoadingId(appointmentId);
     try {
@@ -242,7 +267,6 @@ export default function DashboardTab() {
     }
   };
 
-  // تأكيد إتمام عملية الدفع
   const handleCompletePayment = async () => {
     if (!selectedAppointmentId) return;
     setSubmittingPayment(true);
@@ -511,7 +535,6 @@ export default function DashboardTab() {
                           gap: 12
                         }}
                       >
-                        {/* الشريط العلوي */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                           <img 
                             src={getChildImage(apt.patient)} 
@@ -529,8 +552,6 @@ export default function DashboardTab() {
                           </div>
 
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-                            
-                            {/* التحكم بإظهار الأزرار */}
                             {isCheckedIn ? (
                               <button
                                 onClick={() => handleOpenPaymentModal(apt.id)}
@@ -579,7 +600,6 @@ export default function DashboardTab() {
                               )
                             )}
 
-                            {/* شارة حالة الموعد */}
                             <span style={{ 
                               padding: '4px 10px',
                               borderRadius: 6,
@@ -606,7 +626,6 @@ export default function DashboardTab() {
 
                         <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.05)', margin: '4px 0' }} />
 
-                        {/* التفاصيل */}
                         <div style={{ 
                           display: 'grid', 
                           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
@@ -658,6 +677,45 @@ export default function DashboardTab() {
               </div>
             )}
           </motion.section>
+
+          {/* زر تسجيل الخروج في نهاية الصفحة */}
+          <motion.div 
+            variants={itemVariants}
+            style={{
+              marginTop: 32,
+              paddingTop: 24,
+              borderTop: '1px dashed var(--border-color, #e2e8f0)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={logoutLoading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '12px 24px',
+                borderRadius: 10,
+                border: '1px solid rgba(239, 83, 80, 0.3)',
+                background: 'rgba(239, 83, 80, 0.08)',
+                color: '#ef5350',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: logoutLoading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {logoutLoading ? (
+                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+              ) : (
+                <LogOut size={18} />
+              )}
+              <span>{logoutLoading ? 'Logging out...' : 'Logout'}</span>
+            </button>
+          </motion.div>
         </>
       )}
 

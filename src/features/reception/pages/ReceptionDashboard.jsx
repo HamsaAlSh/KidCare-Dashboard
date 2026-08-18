@@ -65,7 +65,7 @@ export default function ReceptionDashboard() {
         {activePage === 'appointments' && <AppointmentsTab onPaymentToggle={handlePaymentToggle} />}
         {activePage === 'vaccines' && <VaccinesTab onToast={showToast} />}
         {activePage === 'add-account' && <AddAccountTab onToast={showToast} />}
-        {activePage === 'revenue' && <RevenueTab />}
+        
         
       </main>
 
