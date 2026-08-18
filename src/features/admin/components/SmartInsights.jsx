@@ -47,7 +47,7 @@ const generateInsights = (doctorsData = [], departmentsData = [], ageDistributio
         icon: 'fa-trophy',
         color: '#66BB6A',
         title: `Top Performer: ${bestDoctor.name}`,
-        message: `${bestDoctor.patients || 0} patients served. Rating: ${bestDoctor.rating || 0}/5`,
+        message: `${bestDoctor.patients || 0} patients served.`,
         recommendation: 'Consider promotion or mentorship role for new doctors.',
         doctor: bestDoctor.name,
         priority: 'low'
@@ -87,7 +87,7 @@ const generateInsights = (doctorsData = [], departmentsData = [], ageDistributio
 
   if (doctorsData && doctorsData.length > 0) {
     doctorsData.forEach(doc => {
-      const avgScore = ((doc.appointments || 0) + (doc.patients || 0) + (doc.experience || 0) + (doc.rating || 0)) / 4;
+      const avgScore = ((doc.appointments || 0) + (doc.patients || 0) + (doc.experience || 0)) / 3;
       if (avgScore < 3 && (doc.patients || 0) > 0) {
         insights.push({
           id: `doctor-low-${doc.id}`,
@@ -95,7 +95,7 @@ const generateInsights = (doctorsData = [], departmentsData = [], ageDistributio
           icon: 'fa-user-doctor',
           color: '#FF9800',
           title: `${doc.name} Performance Below Average`,
-          message: `Overall performance score: ${avgScore.toFixed(1)}/5 across appointments, patients, and ratings.`,
+          message: `Overall performance score: ${avgScore.toFixed(1)}/5 across appointments and patients.`,
           recommendation: 'Schedule a performance review and provide additional training or support.',
           priority: 'medium'
         });

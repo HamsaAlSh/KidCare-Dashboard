@@ -1,17 +1,13 @@
 import React from 'react';
-import { LayoutDashboard, CalendarDays, UserPlus, DollarSign, Settings, User } from 'lucide-react';
-
+import { LayoutDashboard, CalendarDays, UserPlus, DollarSign, Syringe } from 'lucide-react';
 
 import logoImage from "../../../assets/logo.jpg";
 
-
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'appointments', label: 'Appointments', icon: CalendarDays },
+  { id: 'vaccines', label: 'Vaccines', icon: Syringe },
   { id: 'add-account', label: 'Add Account', icon: UserPlus },
-  { id: 'revenue', label: 'Daily Revenue', icon: DollarSign },
-  { id: 'settings', label: 'Settings', icon: Settings },
-
 ];
 
 export default function Sidebar({ activePage, onPageChange }) {
@@ -19,7 +15,6 @@ export default function Sidebar({ activePage, onPageChange }) {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo">
-          {/* ✅ الصورة فقط — لو ما اشتغلت بيظهر الأيقونة الافتراضية */}
           <img 
             src={logoImage} 
             alt="KidCare Clinic"
@@ -35,7 +30,7 @@ export default function Sidebar({ activePage, onPageChange }) {
               if (fallback) fallback.style.display = 'flex';
             }}
           />
-          {/* Fallback — مخفية بشكل افتراضي */}
+          
           <div 
             style={{
               width: 32,

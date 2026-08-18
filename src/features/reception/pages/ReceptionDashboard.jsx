@@ -4,17 +4,16 @@ import Sidebar from '../components/Sidebar';
 import DashboardTab from '../tabs/DashboardTab';
 import AppointmentsTab from '../tabs/AppointmentsTab';
 import AddAccountTab from '../tabs/ParentsTab';
-import RevenueTab from '../tabs/RevenueTab';
-import SettingsTab from '../tabs/SettingsTab';
-import { appointments } from '../data/appointments';
+
+import VaccinesTab from '../tabs/VaccinesTab'; 
 import './ReceptionDashboard.css';
 
 const pageTitles = {
-  dashboard: 'Dashboard',
+  dashboard: 'Home',
   appointments: 'Appointments',
+  vaccines: 'Vaccines & Immunization', 
   'add-account': 'Add Account',
-  revenue: 'Daily Revenue',
-  settings: 'Settings',
+  
 };
 
 const LiveClock = () => {
@@ -59,21 +58,15 @@ export default function ReceptionDashboard() {
           <div className="page-title">{pageTitles[activePage]}</div>
           <div className="top-bar-actions">
             <LiveClock />
-            <button className="icon-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              <span className="notification-badge">3</span>
-            </button>
           </div>
         </header>
 
         {activePage === 'dashboard' && <DashboardTab />}
         {activePage === 'appointments' && <AppointmentsTab onPaymentToggle={handlePaymentToggle} />}
+        {activePage === 'vaccines' && <VaccinesTab onToast={showToast} />}
         {activePage === 'add-account' && <AddAccountTab onToast={showToast} />}
         {activePage === 'revenue' && <RevenueTab />}
-        {activePage === 'settings' && <SettingsTab />}
+        
       </main>
 
       {toast && (

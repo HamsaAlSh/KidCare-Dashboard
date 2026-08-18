@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CalendarDays, 
   DollarSign, 
@@ -10,10 +10,15 @@ import {
   CreditCard,
   Loader2,
   AlertCircle,
-  ChevronDown,
   Calendar,
   History,
-  User
+  Phone,
+  User,
+  Stethoscope,
+  Building2,
+  CheckCircle2,
+  Receipt,
+  X
 } from 'lucide-react';
 import api from '../../../api/axios.js'; 
 
@@ -73,22 +78,6 @@ const AnimatedNumber = ({ value, prefix = '', suffix = '' }) => {
   return <span>{prefix}{displayValue.toLocaleString('en-US')}{suffix}</span>;
 };
 
-const LiveClock = () => {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const id = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <div className="date-display" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <Clock size={14} />
-      {time.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} &bull; {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-    </div>
-  );
-};
-
 const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 
 const fetchWithRetry = async (url, retries = 2, signal) => {
@@ -103,6 +92,8 @@ const fetchWithRetry = async (url, retries = 2, signal) => {
 };
 
 export default function DashboardTab() {
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -117,13 +108,17 @@ export default function DashboardTab() {
   });
   const [newChildrenCount, setNewChildrenCount] = useState(0);
 
-  // ✅ حالة المواعيد
-  const [children, setChildren] = useState([]);
-  const [selectedChild, setSelectedChild] = useState(null);
-  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
-  const [pastAppointments, setPastAppointments] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [dateAppointments, setDateAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState('');
+
+  // Payment Modal States
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const abortControllerRef = useRef(null);
   const intervalRef = useRef(null);
@@ -155,13 +150,16 @@ export default function DashboardTab() {
         breakdown_by_method: { online_stripe: 0, cash_reception: 0 },
         breakdown_by_type: { fixed_appointments: 0, additions_total: 0 },
       });
-      setNewChildrenCount(childrenRes.data?.data?.today_added_children_count || 0);
+      
+      const childrenCount = 
+        childrenRes.data?.data?.today_added_children_count || 
+        childrenRes.data?.today_added_children_count ||
+        0;
+      setNewChildrenCount(childrenCount);
     } catch (err) {
       if (api.isCancel?.(err) || err.name === 'AbortError' || err.name === 'CanceledError') {
         return;
       }
-
-      console.error('Dashboard data fetch error:', err);
 
       if (err.response?.status === 500) {
         setError({ type: 'server', message: 'Server error (500). Please check Laravel logs.' });
@@ -173,33 +171,24 @@ export default function DashboardTab() {
     }
   }, []);
 
-  // ✅ جيب قائمة الأطفال
-  const fetchChildren = useCallback(async () => {
-    try {
-      const res = await api.get('/children');
-      setChildren(res.data?.children || []);
-    } catch (err) {
-      console.error('Failed to fetch children:', err);
-    }
-  }, []);
-
-  // ✅ جيب مواعيد الطفل المختار
-  const fetchChildAppointments = useCallback(async (childId) => {
-    if (!childId) return;
-    
+  const fetchAppointmentsByDate = useCallback(async (date) => {
     setAppointmentsLoading(true);
     setAppointmentsError('');
 
     try {
-      const [upcomingRes, pastRes] = await Promise.all([
-        api.get(`/appointments/upcoming/${childId}`),
-        api.get(`/appointments/past/${childId}`),
-      ]);
-
-      setUpcomingAppointments(upcomingRes.data?.appointments || []);
-      setPastAppointments(pastRes.data?.appointments || []);
+      const res = await api.get(`/reception/appointments/date/${date}`);
+      
+      const appointments = 
+        res.data?.appointments || 
+        res.data?.data?.appointments || 
+        res.data?.data || 
+        [];
+      
+      setDateAppointments(Array.isArray(appointments) ? appointments : []);
     } catch (err) {
-      setAppointmentsError(err.response?.data?.message || 'Failed to load appointments');
+      console.error('Appointments Error:', err.response?.data);
+      setDateAppointments([]);
+      setAppointmentsError(err.response?.data?.message || 'Failed to load appointments for selected date');
     } finally {
       setAppointmentsLoading(false);
     }
@@ -207,7 +196,6 @@ export default function DashboardTab() {
 
   useEffect(() => {
     fetchDashboardData();
-    fetchChildren();
 
     intervalRef.current = setInterval(() => {
       fetchDashboardData();
@@ -217,17 +205,60 @@ export default function DashboardTab() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [fetchDashboardData, fetchChildren]);
+  }, [fetchDashboardData]);
 
-  // ✅ لما يتغير الطفل المختار
   useEffect(() => {
-    if (selectedChild) {
-      fetchChildAppointments(selectedChild.id);
-    } else {
-      setUpcomingAppointments([]);
-      setPastAppointments([]);
+    if (selectedDate) {
+      fetchAppointmentsByDate(selectedDate);
     }
-  }, [selectedChild, fetchChildAppointments]);
+  }, [selectedDate, fetchAppointmentsByDate]);
+
+  // فتح نافذة المدفوعات
+  const handleOpenPaymentModal = async (appointmentId) => {
+    setSelectedAppointmentId(appointmentId);
+    setLoadingSummary(true);
+    try {
+      const res = await api.get(`/appointments/${appointmentId}/payment-summary-reception`);
+      setPaymentSummary(res.data?.data || null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to fetch payment summary');
+      setSelectedAppointmentId(null);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  // تنفيذ Check-In ثم فتح النافذة تلقائياً
+  const handleCheckInAndOpenPayment = async (appointmentId) => {
+    setActionLoadingId(appointmentId);
+    try {
+      await api.post(`/appointments/${appointmentId}/check-in`);
+      await fetchAppointmentsByDate(selectedDate);
+      await handleOpenPaymentModal(appointmentId);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to check in');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // تأكيد إتمام عملية الدفع
+  const handleCompletePayment = async () => {
+    if (!selectedAppointmentId) return;
+    setSubmittingPayment(true);
+    try {
+      await api.post(`/appointments/${selectedAppointmentId}/complete-payment`);
+      alert('Payment has been completed successfully.');
+      setSelectedAppointmentId(null);
+      setPaymentSummary(null);
+      fetchAppointmentsByDate(selectedDate);
+      fetchDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to complete payment');
+    } finally {
+      setSubmittingPayment(false);
+    }
+  };
 
   const {
     total_revenue = 0,
@@ -250,23 +281,16 @@ export default function DashboardTab() {
     return (breakdown_by_method?.online_stripe || 0) + (breakdown_by_method?.cash_reception || 0);
   }, [breakdown_by_method]);
 
-  const getChildImage = (child) => {
-    if (child?.image && !child.image.includes('girl.png') && !child.image.includes('boy.png')) {
-      return child.image;
+  const getChildImage = (patient) => {
+    if (patient?.image && !patient.image.includes('girl.png') && !patient.image.includes('boy.png')) {
+      return patient.image;
     }
-    return child?.gender === 'male' 
+    return patient?.gender === 'male' 
       ? 'https://kidcare.sy/images/boy.png' 
       : 'https://kidcare.sy/images/girl.png';
   };
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
+  const isTodaySelected = selectedDate === getTodayDate();
 
   return (
     <motion.div 
@@ -276,7 +300,6 @@ export default function DashboardTab() {
       animate="visible" 
       exit="exit"
     >
-      {/* Error Banner */}
       {error && (
         <motion.div 
           variants={itemVariants}
@@ -304,7 +327,6 @@ export default function DashboardTab() {
         </motion.div>
       )}
 
-      {/* Loading State */}
       {loading ? (
         <motion.div 
           variants={itemVariants}
@@ -323,7 +345,6 @@ export default function DashboardTab() {
         </motion.div>
       ) : (
         <>
-          {/* Quick Stats Grid */}
           <motion.section className="quick-stats-grid" variants={itemVariants}>
             <QuickStatCard
               icon={CalendarDays}
@@ -359,7 +380,6 @@ export default function DashboardTab() {
             />
           </motion.section>
 
-          {/* Financial Overview & Payouts */}
           <motion.section className="dashboard-stats-wrapper" variants={containerVariants}>
             <motion.div className="stats-column" variants={itemVariants}>
               <h3 className="section-title">Financial Overview</h3>
@@ -406,7 +426,7 @@ export default function DashboardTab() {
             </motion.div>
           </motion.section>
 
-          {/* ✅ قسم المواعيد */}
+          {/* قائمة المواعيد */}
           <motion.section 
             className="appointments-section" 
             variants={itemVariants}
@@ -416,58 +436,31 @@ export default function DashboardTab() {
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'space-between',
-              marginBottom: 20 
+              marginBottom: 20,
+              flexWrap: 'wrap',
+              gap: 12
             }}>
-              <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
                 <Calendar size={20} />
-                Child Appointments
+                Appointments List
               </h3>
-            </div>
 
-            {/* ✅ Dropdown لاختيار الطفل */}
-            <div className="child-selector" style={{ marginBottom: 20 }}>
-              <div style={{ position: 'relative', maxWidth: 400 }}>
-                <User size={16} style={{ 
-                  position: 'absolute', 
-                  left: 12, 
-                  top: '50%', 
-                  transform: 'translateY(-50%)',
-                  color: '#90A4AE',
-                  zIndex: 1
-                }} />
-                <select
-                  value={selectedChild?.id || ''}
-                  onChange={(e) => {
-                    const child = children.find(c => c.id === parseInt(e.target.value));
-                    setSelectedChild(child || null);
-                  }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontSize: 13, color: '#90A4AE', fontWeight: 500 }}>Select Date:</label>
+                <input 
+                  type="date" 
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
                   style={{
-                    width: '100%',
-                    padding: '12px 16px 12px 40px',
-                    borderRadius: 12,
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--card-bg)',
-                    color: 'var(--text-primary)',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-color, #e2e8f0)',
+                    background: 'var(--card-bg, #ffffff)',
+                    color: 'inherit',
                     fontSize: 14,
-                    cursor: 'pointer',
-                    appearance: 'none',
+                    outline: 'none'
                   }}
-                >
-                  <option value="">Select a child...</option>
-                  {children.map(child => (
-                    <option key={child.id} value={child.id}>
-                      {child.first_name} {child.last_name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={16} style={{ 
-                  position: 'absolute', 
-                  right: 12, 
-                  top: '50%', 
-                  transform: 'translateY(-50%)',
-                  color: '#90A4AE',
-                  pointerEvents: 'none'
-                }} />
+                />
               </div>
             </div>
 
@@ -482,205 +475,287 @@ export default function DashboardTab() {
                 <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
                 <span>Loading appointments...</span>
               </div>
-            ) : selectedChild ? (
-              <div className="appointments-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                {/* ✅ المواعيد القادمة */}
-                <motion.div 
-                  className="appointment-column"
-                  variants={itemVariants}
-                  style={{
-                    background: 'var(--card-bg)',
-                    borderRadius: 16,
-                    padding: 20,
-                    border: '1px solid var(--border-color)',
-                  }}
-                >
-                  <h4 style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 8, 
-                    marginBottom: 16,
-                    color: '#4FC3F7',
-                    fontSize: 16
-                  }}>
-                    <Calendar size={18} />
-                    Upcoming Appointments
-                    <span style={{ 
-                      background: 'rgba(79,195,247,0.15)', 
-                      color: '#4FC3F7',
-                      padding: '2px 10px',
-                      borderRadius: 12,
-                      fontSize: 12
-                    }}>
-                      {upcomingAppointments.length}
-                    </span>
-                  </h4>
+            ) : dateAppointments.length > 0 ? (
+              <motion.div 
+                className="appointments-list"
+                variants={itemVariants}
+                style={{
+                  background: 'var(--card-bg, #ffffff)',
+                  borderRadius: 16,
+                  padding: 20,
+                  border: '1px solid var(--border-color, #e2e8f0)',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {dateAppointments.map(apt => {
+                    const statusNormalized = apt.status?.toLowerCase();
+                    
+                    const isCheckedIn = 
+                      statusNormalized === 'checked_in' || 
+                      statusNormalized === 'checked in' || 
+                      statusNormalized === 'messages.checked_in';
 
-                  {upcomingAppointments.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {upcomingAppointments.map(apt => (
-                        <div 
-                          key={apt.id} 
-                          className="appointment-card"
-                          style={{
-                            padding: 16,
-                            borderRadius: 12,
-                            background: 'rgba(79,195,247,0.05)',
-                            border: '1px solid rgba(79,195,247,0.15)',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <img 
-                              src={getChildImage(apt.child)} 
-                              alt={apt.child?.first_name}
-                              style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 600, fontSize: 14 }}>{apt.child?.first_name}</p>
-                              <p style={{ fontSize: 12, color: '#90A4AE' }}>Dr. {apt.doctor?.full_name}</p>
-                            </div>
-                            <span style={{ 
-                              marginLeft: 'auto',
-                              padding: '4px 12px',
-                              borderRadius: 8,
-                              fontSize: 11,
-                              fontWeight: 500,
-                              background: apt.status === 'Confirmed' ? 'rgba(102,187,106,0.15)' : 'rgba(255,152,0,0.15)',
-                              color: apt.status === 'Confirmed' ? '#66BB6A' : '#FF9800',
-                            }}>
-                              {apt.status}
-                            </span>
+                    const isCompleted = statusNormalized === 'completed';
+
+                    return (
+                      <div 
+                        key={apt.id} 
+                        className="appointment-card"
+                        style={{
+                          padding: 16,
+                          borderRadius: 12,
+                          background: 'rgba(79,195,247,0.05)',
+                          border: '1px solid rgba(79,195,247,0.15)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12
+                        }}
+                      >
+                        {/* الشريط العلوي */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          <img 
+                            src={getChildImage(apt.patient)} 
+                            alt={apt.patient?.child_name}
+                            style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }}
+                            onError={(e) => e.target.src = 'https://kidcare.sy/images/default-avatar.png'}
+                          />
+                          <div>
+                            <p style={{ fontWeight: 600, fontSize: 15, margin: 0 }}>
+                              {apt.patient?.child_name}
+                            </p>
+                            <p style={{ fontSize: 12, color: '#90A4AE', margin: '2px 0 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <User size={12} /> Parent: {apt.patient?.parent_name}
+                            </p>
                           </div>
-                          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#90A4AE' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <CalendarDays size={14} />
-                              {formatDate(apt.date)}
+
+                          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+                            
+                            {/* التحكم بإظهار الأزرار */}
+                            {isCheckedIn ? (
+                              <button
+                                onClick={() => handleOpenPaymentModal(apt.id)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 8,
+                                  background: '#10b981',
+                                  color: '#fff',
+                                  border: 'none',
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Receipt size={14} /> View Payment
+                              </button>
+                            ) : (
+                              isTodaySelected && !isCompleted && (
+                                <button
+                                  onClick={() => handleCheckInAndOpenPayment(apt.id)}
+                                  disabled={actionLoadingId === apt.id}
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: 8,
+                                    background: '#3b82f6',
+                                    color: '#fff',
+                                    border: 'none',
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  {actionLoadingId === apt.id ? (
+                                    <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                                  ) : (
+                                    <CheckCircle2 size={14} />
+                                  )} 
+                                  Check In
+                                </button>
+                              )
+                            )}
+
+                            {/* شارة حالة الموعد */}
+                            <span style={{ 
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              background: isCompleted ? 'rgba(102,187,106,0.15)' : isCheckedIn ? 'rgba(59,130,246,0.15)' : 'rgba(255,152,0,0.15)',
+                              color: isCompleted ? '#66BB6A' : isCheckedIn ? '#3b82f6' : '#FF9800',
+                            }}>
+                              {isCompleted ? 'Completed' : isCheckedIn ? 'Checked In' : apt.status}
                             </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <Clock size={14} />
-                              {apt.time}
-                            </span>
-                            <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#4FC3F7' }}>
-                              ${apt.price}
+                            
+                            <span style={{ 
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              background: apt.payment_status === 'paid' ? 'rgba(102,187,106,0.15)' : 'rgba(239,83,80,0.15)',
+                              color: apt.payment_status === 'paid' ? '#66BB6A' : '#EF5350',
+                            }}>
+                              {apt.payment_status?.toUpperCase()}
                             </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ textAlign: 'center', color: '#90A4AE', padding: 20 }}>
-                      No upcoming appointments
-                    </p>
-                  )}
-                </motion.div>
 
-                {/* ✅ المواعيد السابقة */}
-                <motion.div 
-                  className="appointment-column"
-                  variants={itemVariants}
-                  style={{
-                    background: 'var(--card-bg)',
-                    borderRadius: 16,
-                    padding: 20,
-                    border: '1px solid var(--border-color)',
-                  }}
-                >
-                  <h4 style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 8, 
-                    marginBottom: 16,
-                    color: '#AB47BC',
-                    fontSize: 16
-                  }}>
-                    <History size={18} />
-                    Past Appointments
-                    <span style={{ 
-                      background: 'rgba(171,71,188,0.15)', 
-                      color: '#AB47BC',
-                      padding: '2px 10px',
-                      borderRadius: 12,
-                      fontSize: 12
-                    }}>
-                      {pastAppointments.length}
-                    </span>
-                  </h4>
+                        <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.05)', margin: '4px 0' }} />
 
-                  {pastAppointments.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {pastAppointments.map(apt => (
-                        <div 
-                          key={apt.id} 
-                          className="appointment-card"
-                          style={{
-                            padding: 16,
-                            borderRadius: 12,
-                            background: 'rgba(171,71,188,0.05)',
-                            border: '1px solid rgba(171,71,188,0.15)',
-                            opacity: 0.85,
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <img 
-                              src={getChildImage(apt.child)} 
-                              alt={apt.child?.first_name}
-                              style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 600, fontSize: 14 }}>{apt.child?.first_name}</p>
-                              <p style={{ fontSize: 12, color: '#90A4AE' }}>Dr. {apt.doctor?.full_name}</p>
-                            </div>
-                            <span style={{ 
-                              marginLeft: 'auto',
-                              padding: '4px 12px',
-                              borderRadius: 8,
-                              fontSize: 11,
-                              fontWeight: 500,
-                              background: apt.status === 'Completed' ? 'rgba(102,187,106,0.15)' : 'rgba(239,83,80,0.15)',
-                              color: apt.status === 'Completed' ? '#66BB6A' : '#EF5350',
-                            }}>
-                              {apt.status}
-                            </span>
+                        {/* التفاصيل */}
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+                          gap: 12, 
+                          fontSize: 13, 
+                          color: '#607D8B' 
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Clock size={15} color="#4FC3F7" />
+                            <span>Time: <strong>{apt.time}</strong></span>
                           </div>
-                          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#90A4AE' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <CalendarDays size={14} />
-                              {formatDate(apt.date)}
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <Clock size={14} />
-                              {apt.time}
-                            </span>
-                            <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#AB47BC' }}>
-                              ${apt.price}
-                            </span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <DollarSign size={15} color="#66BB6A" />
+                            <span>Price: <strong>${apt.price}</strong></span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Stethoscope size={15} color="#AB47BC" />
+                            <span>Doctor: <strong>Dr. {apt.doctor?.full_name}</strong></span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Building2 size={15} color="#FF9800" />
+                            <span>Dept: <strong>{apt.doctor?.department}</strong></span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Phone size={15} color="#29B6F6" />
+                            <span>Phone: <strong>{apt.patient?.parent_phone}</strong></span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ textAlign: 'center', color: '#90A4AE', padding: 20 }}>
-                      No past appointments
-                    </p>
-                  )}
-                </motion.div>
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
             ) : (
               <div style={{ 
                 textAlign: 'center', 
                 padding: 60, 
                 color: '#90A4AE',
-                background: 'var(--card-bg)',
+                background: 'var(--card-bg, #ffffff)',
                 borderRadius: 16,
-                border: '1px dashed var(--border-color)',
+                border: '1px dashed var(--border-color, #e2e8f0)',
               }}>
-                <User size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-                <p>Select a child to view their appointments</p>
+                <History size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
+                <p>No appointments scheduled for {selectedDate}</p>
               </div>
             )}
           </motion.section>
         </>
       )}
+
+      {/* Modal - نافذة عرض وتأكيد الدفع */}
+      <AnimatePresence>
+        {selectedAppointmentId && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          }}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{
+                background: '#fff', width: '100%', maxWidth: '480px', margin: '20px',
+                borderRadius: '16px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Receipt size={20} color="#10b981" /> Payment Summary
+                </h3>
+                <button onClick={() => { setSelectedAppointmentId(null); setPaymentSummary(null); }} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  <X size={20} color="#94a3b8" />
+                </button>
+              </div>
+
+              {loadingSummary ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                  <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: '#10b981' }} />
+                </div>
+              ) : paymentSummary ? (
+                <div>
+                  <div style={{ fontSize: 14, color: '#475569', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div><strong>Patient:</strong> {paymentSummary.patient_name}</div>
+                    <div><strong>Doctor:</strong> {paymentSummary.doctor_name}</div>
+                    <div><strong>Booking Source:</strong> {paymentSummary.booking_source}</div>
+                  </div>
+
+                  <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '12px 0' }} />
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
+                    <span>Fixed Consultation Price:</span>
+                    <strong>${paymentSummary.fixed_price} ({paymentSummary.fixed_price_status})</strong>
+                  </div>
+
+                  {paymentSummary.additions && paymentSummary.additions.length > 0 && (
+                    <div style={{ margin: '12px 0' }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, color: '#64748b', marginBottom: 6 }}>Additions & Services:</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#f8fafc', padding: 10, borderRadius: 8 }}>
+                        {paymentSummary.additions.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                            <span>{item.item_name}</span>
+                            <strong>${item.price}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '12px 0' }} />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, marginBottom: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Additions Total:</span>
+                      <strong>${paymentSummary.totals?.additions_total}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Already Paid Online:</span>
+                      <strong>${paymentSummary.totals?.already_paid_online}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontSize: 16, fontWeight: 'bold', marginTop: 4 }}>
+                      <span>Required Cash Now:</span>
+                      <span>${paymentSummary.totals?.required_cash_now}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleCompletePayment}
+                    disabled={submittingPayment}
+                    style={{
+                      width: '100%', padding: '12px', background: '#10b981', color: '#fff',
+                      border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                  >
+                    {submittingPayment ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={18} />} Complete Payment
+                  </button>
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', color: '#ef4444' }}>Could not load payment details.</p>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -697,7 +772,6 @@ function QuickStatCard({ icon: Icon, label, value, trend, trendType, color }) {
         <h4>{label}</h4>
         <p className="quick-stat-value">{value}</p>
         <div className={`trend ${trendType}`}>
-          {trendType === 'positive' && <TrendingUp size={12} />}
           {trend}
         </div>
       </div>

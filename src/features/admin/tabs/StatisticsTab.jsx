@@ -93,7 +93,7 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
   const [departmentsShare, setDepartmentsShare] = useState([]);
   const [weeklyAppointmentsData, setWeeklyAppointmentsData] = useState([]);
 
-  // جلب كل الأطباء
+  
   useEffect(() => {
     const fetchAllDoctorsPages = async () => {
       try {
@@ -125,14 +125,14 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
     fetchAllDoctorsPages();
   }, []);
 
-  // ✅ جديد - اختيار أول طبيب تلقائياً عند تحميل القائمة
+ 
   useEffect(() => {
     if (doctorsList.length > 0 && !selectedDoctorId) {
       setSelectedDoctorId(doctorsList[0].id);
     }
   }, [doctorsList, selectedDoctorId, setSelectedDoctorId]);
 
-  // ✅ جلب الإحصائيات - كل API منفصل بـ try/catch
+
   useEffect(() => {
     const fetchStatistics = async () => {
       setLoading(true);
@@ -144,7 +144,7 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
         return;
       }
 
-      // 1. Age Distribution
+      
       try {
         const response = await api.get('/reports/children-age-distribution');
         if (response.data?.status === 'success') {
@@ -155,8 +155,7 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
         }
       } catch (e) { /* silent fail */ }
 
-      // 2. Weekly Stats (Doctor)
-      try {
+            try {
         const response = await api.get(`/reports/${doctorId}/weekly-stats`);
         if (response.data?.status === 'success') {
           setWeeklyStats(response.data.data);
@@ -205,11 +204,10 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
     }
   }, [selectedDoctorId, doctorsList]);
 
-  // ✅ جلب إحصائيات طبيب محدد - مع التحقق من وجود الطبيب في القائمة
   useEffect(() => {
     if (!selectedDoctorId) return;
 
-    // ✅ تأكد أن الطبيب موجود في doctorsList قبل إرسال الطلب
+
     const doctorExists = doctorsList.some(doc => doc.id === selectedDoctorId);
     if (!doctorExists) return;
 
@@ -232,7 +230,7 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
     label: doc.name
   }));
 
-  // ✅ تعديل: لا تستخدم doctorOptions[0] كـ fallback لتجنب undefined
+ 
   const selectedOption = doctorOptions.find(opt => opt.value === selectedDoctorId) || null;
 
   const monthlyRevenue = monthlyBudget.map(item => ({
@@ -274,7 +272,7 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
 
   return (
     <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
-      {/* ✅ Weekly Summary Cards */}
+      {/*  Weekly Summary Cards */}
       <motion.div className="manager-insights-grid" variants={itemVariants}>
         <motion.div className="insight-card" whileHover={{ y: -3 }}>
           <div className="insight-icon" style={{ background: '#E8F5E9', color: '#66BB6A' }}>

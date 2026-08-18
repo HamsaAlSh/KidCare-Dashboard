@@ -138,7 +138,7 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    console.log('🚀 useEffect running - fetching doctors...'); 
+    console.log(' useEffect running - fetching doctors...'); 
     fetchDoctors(1);
     fetchAllDoctors();
   }, []);

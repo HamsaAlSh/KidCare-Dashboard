@@ -1,19 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../../api/axios';
 import SmartInsights from "../components/SmartInsights";
-
-const api = axios.create({
-  baseURL: '/api',
-});
-
-api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('admin_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -56,7 +44,6 @@ const SmartInsightsTab = () => {
           id: doc.id,
           name: `Dr. ${doc.full_name}`,
           patients: doc.patients_count || 0,
-          rating: doc.rating || 0,
           appointments: doc.appointments_count || 0,
           experience: doc.experience_years || 0,
           workingHours: doc.weekly_working_hours || 0,
@@ -129,13 +116,6 @@ const SmartInsightsTab = () => {
   return (
     <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
       <motion.div className="page-header" variants={itemVariants}>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)' }}>
-          <i className="fa-solid fa-lightbulb" style={{ color: '#4FC3F7', marginRight: '12px' }}></i>
-          Smart Insights
-        </h1>
-        <p style={{ color: 'var(--text-grey)', fontSize: '16px', marginTop: '8px' }}>
-          AI-powered analysis based on your clinic's real-time data
-        </p>
       </motion.div>
 
       <SmartInsights 

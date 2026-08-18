@@ -1,275 +1,194 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, CalendarDays, Clock, Stethoscope } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Calendar, Clock, User, Stethoscope, Loader2 } from 'lucide-react';
 import api from '../../../api/axios';
-
-const filters = [
-  { id: 'all', label: 'All' },
-  { id: 'upcoming', label: 'Upcoming' },    
-  { id: 'completed', label: 'Completed' },  
-];
-
-const statusMap = {
-  'مكتمل': 'completed',
-  'مؤكد': 'confirmed',
-  'pending': 'pending',
-  'cancelled': 'cancelled',
-};
-
-const getStatusClass = (status) => {
-  const mapped = statusMap[status] || 'unknown';
-  
-  const classes = {
-    confirmed: 'status-upcoming',
-    completed: 'status-completed',
-    pending: 'status-pending',
-  };
-  
-  return classes[mapped] || 'status-pending';
-};
-
-const getStatusLabel = (status) => {
-  if (!status) return 'Unknown';
-  if (statusMap[status] === 'confirmed') return 'Upcoming';
-  if (statusMap[status] === 'completed') return 'Completed';
-  return status;
-};
+import AppointmentModal from '../components/AppointmentModal';
+import AddAppointmentModal from '../components/AddAppointmentModal';
 
 export default function AppointmentsTab() {
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
   const [appointments, setAppointments] = useState([]);
-  const [children, setChildren] = useState([]);
-  const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modals status
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
+  // 1. Fetch All Appointments & Sort by Date/Time
+  const fetchAppointments = async () => {
     try {
-      const appointmentsRes = await api.get('/reception/appointments');
-      console.log('✅ Appointments API:', appointmentsRes.data);
-      const appts = appointmentsRes.data?.appointments || [];
-      setAppointments(appts);
+      setLoading(true);
+      const res = await api.get('/reception/appointments');
+      const rawList = res.data?.appointments || res.data || [];
 
-      console.log('📋 Statuses in appointments:', appts.map(a => ({ id: a.id, status: a.status, statusType: typeof a.status })));
+      // فرز المواعيد حسب التاريخ والوقت تصاعدياً
+      const sortedList = Array.isArray(rawList)
+        ? [...rawList].sort((a, b) => {
+            const dateTimeA = new Date(`${a.date || ''} ${a.time || ''}`);
+            const dateTimeB = new Date(`${b.date || ''} ${b.time || ''}`);
+            return dateTimeA - dateTimeB;
+          })
+        : [];
 
-      const childrenRes = await api.get('/children');
-      console.log('✅ Children API:', childrenRes.data);
-      setChildren(childrenRes.data?.children || []);
-
-      const allDoctors = [];
-      let page = 1;
-      let hasMore = true;
-
-      while (hasMore) {
-        try {
-          const res = await api.get(`/doctors?page=${page}`);
-          const docs = res.data?.data || [];
-          allDoctors.push(...docs);
-          hasMore = docs.length === 10;
-          page++;
-        } catch (err) {
-          console.error('Failed to fetch doctors page', page, err);
-          break;
-        }
-      }
-
-      console.log('✅ Total doctors fetched:', allDoctors.length);
-      setDoctors(allDoctors);
-
+      setAppointments(sortedList);
     } catch (err) {
-      console.error('Fetch error:', err);
-      setError('Failed to load appointments');
+      console.error('Error fetching appointments:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchAppointments();
+  }, []);
 
-  const getChildName = (childId) => {
-    const child = children.find(c => c.id === childId || c.id === Number(childId));
-    return child ? `${child.first_name} ${child.last_name}` : `Child #${childId}`;
+  // دالة مساعدة لجلب اسم الطفل مع التعامل مع مختلف تنسيقات الـ API
+  const getChildName = (apt) => {
+    if (apt.child_first_name) return `${apt.child_first_name} ${apt.child_last_name || ''}`;
+    if (apt.child?.first_name) return `${apt.child.first_name} ${apt.child.last_name || ''}`;
+    if (apt.child_name) return apt.child_name;
+    if (apt.patient_name) return apt.patient_name;
+    return 'غير محدد';
   };
 
-  const getDoctorName = (doctorId) => {
-    const doctor = doctors.find(d => d.id === doctorId || d.id === Number(doctorId));
-    
-    if (doctor) {
-      return doctor.full_name;
-    }
-    
-    console.log(`🔍 Doctor not found: ID=${doctorId} (type: ${typeof doctorId}), Available IDs:`, doctors.map(d => d.id));
-    return `Doctor #${doctorId}`;
+  // دالة مساعدة لجلب اسم الطبيب مع التعامل مع مختلف تنسيقات الـ API
+  const getDoctorName = (apt) => {
+    if (apt.doctor_first_name) return `Dr. ${apt.doctor_first_name} ${apt.doctor_last_name || ''}`;
+    if (apt.doctor?.first_name) return `Dr. ${apt.doctor.first_name} ${apt.doctor.last_name || ''}`;
+    if (apt.doctor_name) return `Dr. ${apt.doctor_name}`;
+    return 'غير محدد';
   };
 
-  const getChildImage = (childId) => {
-    const child = children.find(c => c.id === childId || c.id === Number(childId));
-    if (!child) return 'https://kidcare.sy/images/boy.png';
-    
-    if (child.image && !child.image.includes('girl.png') && !child.image.includes('boy.png')) {
-      return child.image;
-    }
-    
-    return child.gender === 'male' 
-      ? 'https://kidcare.sy/images/boy.png' 
-      : 'https://kidcare.sy/images/girl.png';
-  };
-
-  const filtered = appointments.filter(a => {
-    const mappedStatus = statusMap[a.status];
-    
-    if (filter === 'upcoming') return mappedStatus === 'confirmed';
-    if (filter === 'completed') return mappedStatus === 'completed';
-    return true;
-  }).filter(a => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const childName = getChildName(a.child_id).toLowerCase();
-    const doctorName = getDoctorName(a.doctor_id).toLowerCase();
-    return childName.includes(q) || doctorName.includes(q) || a.date?.includes(q);
+  // Filter Search
+  const filteredAppointments = appointments.filter((apt) => {
+    const childName = getChildName(apt).toLowerCase();
+    const doctorName = getDoctorName(apt).toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return childName.includes(term) || doctorName.includes(term) || String(apt.id).includes(term);
   });
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
+  const getStatusBadge = (status) => {
+    if (!status) return <span className="status-badge status-pending">Pending</span>;
+    const st = status.toLowerCase();
+    if (st.includes('مؤكد') || st.includes('confirmed')) return <span className="status-badge status-confirmed">{status}</span>;
+    if (st.includes('مكتمل') || st.includes('completed')) return <span className="status-badge status-completed">{status}</span>;
+    if (st.includes('إلغاء') || st.includes('cancelled') || st.includes('canceled')) return <span className="status-badge status-cancelled">{status}</span>;
+    return <span className="status-badge status-pending">{status}</span>;
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 80, gap: 16, color: '#90A4AE' }}>
-        <Loader2 size={40} style={{ animation: 'spin 1s linear infinite' }} />
-        <p>Loading appointments...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ 
-        background: '#ffebee', 
-        color: '#c62828', 
-        padding: 16, 
-        borderRadius: 12,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-      }}>
-        <AlertCircle size={20} />
-        <p>{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <div className="page-toolbar">
-        <div className="search-box">
-          <Search size={18} color="#6a6a8a" />
+    <div className="tab-container" style={{ padding: '20px' }}>
+      
+      {/* Action Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, maxWidth: '360px' }}>
+          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input 
             type="text" 
-            placeholder="Search child or doctor..." 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
+            placeholder="Search by child, doctor or ID..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '10px 10px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
           />
         </div>
-        <div className="filter-tabs">
-          {filters.map(f => (
-            <button 
-              key={f.id} 
-              className={`filter-tab ${filter === f.id ? 'active' : ''}`} 
-              onClick={() => setFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+
+        <button 
+          onClick={() => setShowAddModal(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+        >
+          <Plus size={18} /> Add Appointment
+        </button>
       </div>
-      
-      <div className="content-card">
-        <div className="table-container">
-          <table className="data-table">
+
+      {/* Appointments List / Table */}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
+          <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#3b82f6' }} />
+        </div>
+      ) : filteredAppointments.length > 0 ? (
+        <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr>
-                <th>Child</th>
-                <th>Doctor</th>
-                <th>Date & Time</th>
-                <th>Price</th>
-                <th>Status</th>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '13px' }}>
+                <th style={{ padding: '12px 16px' }}>ID</th>
+                <th style={{ padding: '12px 16px' }}>Child</th>
+                <th style={{ padding: '12px 16px' }}>Doctor</th>
+                <th style={{ padding: '12px 16px' }}>Date & Time</th>
+                <th style={{ padding: '12px 16px' }}>Status</th>
+                <th style={{ padding: '12px 16px' }}>Price</th>
+                <th style={{ padding: '12px 16px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length ? filtered.map(a => (
-                <tr key={a.id} className="table-row">
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <img 
-                        src={getChildImage(a.child_id)} 
-                        alt={getChildName(a.child_id)}
-                        style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
-                        onError={(e) => { e.target.src = 'https://kidcare.sy/images/boy.png'; }}
-                      />
-                      <div>
-                        <p style={{ fontWeight: 600, fontSize: 14 }}>{getChildName(a.child_id)}</p>
-                        <p style={{ fontSize: 12, color: '#90A4AE' }}>ID: #{a.child_id}</p>
-                      </div>
+              {filteredAppointments.map((apt) => (
+                <tr 
+                  key={apt.id} 
+                  onClick={() => setSelectedAppointmentId(apt.id)}
+                  style={{ borderBottom: '1px solid #f1f5f9', fontSize: '14px', cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                >
+                  <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>#{apt.id}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <User size={15} color="#64748b" />
+                      <span style={{ fontWeight: 600 }}>{getChildName(apt)}</span>
                     </div>
                   </td>
-                  
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Stethoscope size={16} color="#90A4AE" />
-                      <span>{getDoctorName(a.doctor_id)}</span>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Stethoscope size={15} color="#64748b" />
+                      <span>{getDoctorName(apt)}</span>
                     </div>
                   </td>
-                  
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-                        <CalendarDays size={14} color="#90A4AE" />
-                        {formatDate(a.date)}
-                      </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#90A4AE' }}>
-                        <Clock size={14} color="#90A4AE" />
-                        {a.time}
-                      </span>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '13px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={13} color="#94a3b8" /> {apt.date}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b' }}><Clock size={13} color="#94a3b8" /> {apt.time}</span>
                     </div>
                   </td>
-                  
-                  <td>
-                    <span style={{ fontWeight: 600, color: '#4FC3F7' }}>
-                      ${a.price}
-                    </span>
+                  <td style={{ padding: '12px 16px' }}>
+                    {getStatusBadge(apt.status)}
                   </td>
-                  
-                  <td>
-                    <span 
-                      className={`status-badge ${getStatusClass(a.status)}`}
-                      title={`Raw status: ${a.status}`}
+                  <td style={{ padding: '12px 16px', fontWeight: 600 }}>${apt.price || '0'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAppointmentId(apt.id);
+                      }}
+                      style={{ padding: '6px 12px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                     >
-                      {getStatusLabel(a.status)}
-                    </span>
+                      View Details
+                    </button>
                   </td>
                 </tr>
-              )) : (
-                <tr>
-                  <td colSpan="5">
-                    <div className="empty-state">No appointments found</div>
-                  </td>
-                </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-      </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+          No appointments found.
+        </div>
+      )}
+
+      {/* 1. Modal: Details & Edit */}
+      {selectedAppointmentId && (
+        <AppointmentModal 
+          appointmentId={selectedAppointmentId} 
+          onClose={() => setSelectedAppointmentId(null)} 
+          onRefresh={fetchAppointments} 
+        />
+      )}
+
+      {/* 2. Modal: Add New Appointment */}
+      {showAddModal && (
+        <AddAppointmentModal 
+          onClose={() => setShowAddModal(false)} 
+          onRefresh={fetchAppointments} 
+        />
+      )}
+
     </div>
   );
 }
