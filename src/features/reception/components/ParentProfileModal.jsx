@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../api/axios';
-import ChildDetailsModal from './ChildDetailsModal';
+import ChildDetailsModal from '../components/ChildDetailsModal';
 
 export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate }) {
   const [parent, setParent] = useState(null);
@@ -13,8 +13,6 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
   const [selectedChildId, setSelectedChildId] = useState(null);
 
   const [formValues, setFormValues] = useState({
-    first_name: '',
-    last_name: '',
     email: '',
     phone_number: '',
     address: '',
@@ -29,8 +27,6 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
   useEffect(() => {
     if (parent) {
       setFormValues({
-        first_name: parent.first_name || '',
-        last_name: parent.last_name || '',
         email: parent.email || '',
         phone_number: parent.phone_number || '',
         address: parent.address || '',
@@ -63,8 +59,6 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
 
     const formData = {
       parent_id: parentId,
-      first_name: formValues.first_name.trim(),
-      last_name: formValues.last_name.trim(),
       email: formValues.email.trim(),
       phone_number: formValues.phone_number.trim(),
       address: formValues.address.trim(),
@@ -138,18 +132,68 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
                   </div>
                 </div>
 
-                <div className="profile-details" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', margin: '20px 0' }}>
-                  <div className="detail-item">
-                    <span className="detail-label" style={{ color: '#64748b', fontSize: '12px' }}>Email</span>
-                    <div className="detail-value" style={{ fontWeight: 600 }}>{parent.email}</div>
+                {/* كروت تفاصيل الوالد */}
+                <div 
+                  className="profile-details-grid" 
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', 
+                    gap: '14px', 
+                    margin: '20px 0' 
+                  }}
+                >
+                  <div 
+                    className="detail-card" 
+                    style={{ 
+                      background: 'var(--bg-primary, #f8fafc)', 
+                      border: '1px solid var(--border-color, #e2e8f0)', 
+                      borderRadius: 'var(--radius-sm, 12px)', 
+                      padding: '12px 14px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'center', 
+                      alignItems: 'flex-start', 
+                      gap: '4px' 
+                    }}
+                  >
+                    <span className="detail-label" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Email</span>
+                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word', width: '100%' }}>{parent.email || 'N/A'}</div>
                   </div>
-                  <div className="detail-item">
-                    <span className="detail-label" style={{ color: '#64748b', fontSize: '12px' }}>Phone Number</span>
-                    <div className="detail-value" style={{ fontWeight: 600 }}>{parent.phone_number}</div>
+
+                  <div 
+                    className="detail-card" 
+                    style={{ 
+                      background: 'var(--bg-primary, #f8fafc)', 
+                      border: '1px solid var(--border-color, #e2e8f0)', 
+                      borderRadius: 'var(--radius-sm, 12px)', 
+                      padding: '12px 14px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'center', 
+                      alignItems: 'flex-start', 
+                      gap: '4px' 
+                    }}
+                  >
+                    <span className="detail-label" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Phone Number</span>
+                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word', width: '100%' }}>{parent.phone_number || 'N/A'}</div>
                   </div>
-                  <div className="detail-item">
-                    <span className="detail-label" style={{ color: '#64748b', fontSize: '12px' }}>Address</span>
-                    <div className="detail-value" style={{ fontWeight: 600 }}>{parent.address || 'Not specified'}</div>
+
+                  <div 
+                    className="detail-card" 
+                    style={{ 
+                      background: 'var(--bg-primary, #f8fafc)', 
+                      border: '1px solid var(--border-color, #e2e8f0)', 
+                      borderRadius: 'var(--radius-sm, 12px)', 
+                      padding: '12px 14px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'center', 
+                      alignItems: 'flex-start', 
+                      gap: '4px' 
+                    }}
+                  >
+                    <span className="detail-label" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Address</span>
+                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word', width: '100%' }}>{parent.address || 'Not specified'}</div>
                   </div>
                 </div>
 
@@ -196,16 +240,6 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
               </div>
             ) : (
               <form onSubmit={handleUpdate}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">First Name</label>
-                    <input type="text" name="first_name" className="form-input" value={formValues.first_name} onChange={handleInputChange} required />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Last Name</label>
-                    <input type="text" name="last_name" className="form-input" value={formValues.last_name} onChange={handleInputChange} required />
-                  </div>
-                </div>
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Phone Number</label>

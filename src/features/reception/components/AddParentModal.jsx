@@ -47,18 +47,18 @@ export default function AddParentModal({ isOpen, onClose, onSuccess }) {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">First Name <span className="required">*</span></label>
-              <input type="text" name="first_name" className="form-input" placeholder="e.g. Louay" required />
+              <input type="text" name="first_name" className="form-input" placeholder="e.g. Sarah" required />
             </div>
             <div className="form-group">
               <label className="form-label">Last Name <span className="required">*</span></label>
-              <input type="text" name="last_name" className="form-input" placeholder="e.g. Khneifas" required />
+              <input type="text" name="last_name" className="form-input" placeholder="e.g. All" required />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Phone Number <span className="required">*</span></label>
-              <input type="tel" name="phone_number" className="form-input" placeholder="+9639xxxxxxxx" required />
+              <input type="tel" name="phone_number" className="form-input" placeholder="09xxxxxxxx" required />
             </div>
             <div className="form-group">
               <label className="form-label">Email <span className="required">*</span></label>

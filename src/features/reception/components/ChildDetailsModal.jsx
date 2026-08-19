@@ -6,26 +6,30 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'vaccines' | 'appointments'
+  const [activeTab, setActiveTab] = useState('details');
 
-  // حالات البيانات الخاصة بالتابات
   const [vaccines, setVaccines] = useState([]);
   const [vaccinesLoading, setVaccinesLoading] = useState(false);
 
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [pastAppointments, setPastAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
-  const [appointmentType, setAppointmentType] = useState('upcoming'); // 'upcoming' | 'past'
+  const [appointmentType, setAppointmentType] = useState('upcoming');
 
   const [editForm, setEditForm] = useState({
     first_name: '',
     last_name: '',
     gender: 'male',
-    birth_date: '',
     blood_type: 'A+',
     medical_history: '',
     allergies: ''
   });
+
+  // دالة تنسيق التاريخ النظيف دون تحويلات Timezone
+  const formatDateString = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    return dateStr.split('T')[0];
+  };
 
   useEffect(() => {
     if (isOpen && childId) {
@@ -33,14 +37,12 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
     }
   }, [isOpen, childId]);
 
-  // جلب اللقاحات عند فتح تبويب اللقاحات
   useEffect(() => {
     if (isOpen && childId && activeTab === 'vaccines') {
       fetchVaccines();
     }
   }, [isOpen, childId, activeTab]);
 
-  // جلب المواعيد عند فتح تبويب المواعيد
   useEffect(() => {
     if (isOpen && childId && activeTab === 'appointments') {
       fetchAppointments();
@@ -57,7 +59,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
         first_name: data.first_name || '',
         last_name: data.last_name || '',
         gender: data.gender ? data.gender.toLowerCase() : 'male',
-        birth_date: data.birth_date ? data.birth_date.split('T')[0] : '',
         blood_type: data.blood_type || 'A+',
         medical_history: data.medical_history || '',
         allergies: data.allergies || ''
@@ -69,7 +70,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
     }
   };
 
-  // 1. API اللقاحات: GET /vaccines/child-history/{child_id}
   const fetchVaccines = async () => {
     setVaccinesLoading(true);
     try {
@@ -82,15 +82,12 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
     }
   };
 
-  // 2. API المواعيد القادمة والسابقة
   const fetchAppointments = async () => {
     setAppointmentsLoading(true);
     try {
-      // GET /appointments/upcoming/{child_id}
       const upcomingRes = await api.get(`/appointments/upcoming/${childId}`);
       setUpcomingAppointments(upcomingRes.data?.appointments || []);
 
-      // GET /appointments/past/{child_id}
       const pastRes = await api.get(`/appointments/past/${childId}`);
       setPastAppointments(pastRes.data?.appointments || []);
     } catch (err) {
@@ -120,7 +117,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
       formData.append('first_name', editForm.first_name);
       formData.append('last_name', editForm.last_name);
       formData.append('gender', editForm.gender.toLowerCase());
-      formData.append('birth_date', editForm.birth_date);
       formData.append('blood_type', editForm.blood_type);
       formData.append('medical_history', editForm.medical_history);
       formData.append('allergies', editForm.allergies);
@@ -150,7 +146,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
           <div style={{ padding: '40px', textAlign: 'center' }}>Loading Child Info...</div>
         ) : child ? (
           <div className="form-body">
-            {/* Nav Tabs */}
             <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #e2e8f0', marginBottom: '15px' }}>
               <button 
                 onClick={() => setActiveTab('details')}
@@ -169,7 +164,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
               </button>
             </div>
 
-            {/* TAB 1: DETAILS & EDIT */}
             {activeTab === 'details' && (
               !isEditing ? (
                 <div>
@@ -190,7 +184,7 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                     <div><strong>Gender:</strong> {child.gender}</div>
-                    <div><strong>Birth Date:</strong> {child.birth_date ? child.birth_date.split('T')[0] : 'N/A'}</div>
+                    <div><strong>Birth Date:</strong> {formatDateString(child.birth_date)}</div>
                     <div style={{ gridColumn: 'span 2' }}><strong>Medical History:</strong> {child.medical_history || 'None'}</div>
                     <div style={{ gridColumn: 'span 2' }}><strong>Allergies:</strong> {child.allergies || 'None'}</div>
                   </div>
@@ -221,10 +215,28 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Birth Date</label>
-                      <input type="date" className="form-input" value={editForm.birth_date} onChange={e => setEditForm({...editForm, birth_date: e.target.value})} required />
+                      <label>Blood Type</label>
+                      <select className="form-input" value={editForm.blood_type} onChange={e => setEditForm({...editForm, blood_type: e.target.value})}>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                      </select>
                     </div>
                   </div>
+                  <div className="form-group" style={{ marginTop: '10px' }}>
+                    <label>Medical History</label>
+                    <input type="text" className="form-input" value={editForm.medical_history} onChange={e => setEditForm({...editForm, medical_history: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginTop: '10px' }}>
+                    <label>Allergies</label>
+                    <input type="text" className="form-input" value={editForm.allergies} onChange={e => setEditForm({...editForm, allergies: e.target.value})} />
+                  </div>
+
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '15px' }}>
                     <button type="submit" className="btn btn-primary" disabled={saving}>Save Changes</button>
                     <button type="button" className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
@@ -233,7 +245,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
               )
             )}
 
-            {/* TAB 2: VACCINES RECORD */}
             {activeTab === 'vaccines' && (
               <div>
                 {vaccinesLoading ? (
@@ -251,7 +262,7 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
                       {vaccines.map((v) => (
                         <tr key={v.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '10px', fontWeight: 600 }}>{v.vaccine_name}</td>
-                          <td style={{ padding: '10px' }}>{v.given_date}</td>
+                          <td style={{ padding: '10px' }}>{formatDateString(v.given_date)}</td>
                           <td style={{ padding: '10px', color: '#64748b' }}>{v.notes || '-'}</td>
                         </tr>
                       ))}
@@ -265,7 +276,6 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
               </div>
             )}
 
-            {/* TAB 3: APPOINTMENTS */}
             {activeTab === 'appointments' && (
               <div>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
@@ -310,7 +320,7 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
                             <div key={app.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
                                 <div style={{ fontWeight: 600 }}>Doctor: {app.doctor?.full_name} ({app.doctor?.department})</div>
-                                <div style={{ fontSize: '13px', color: '#64748b' }}>Date: {app.date} | Time: {app.time}</div>
+                                <div style={{ fontSize: '13px', color: '#64748b' }}>Date: {formatDateString(app.date)} | Time: {app.time}</div>
                                 <div style={{ fontSize: '12px', color: '#059669', marginTop: '4px' }}>Price: ${app.price}</div>
                               </div>
                               <span style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
@@ -329,7 +339,7 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
                             <div key={app.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
                                 <div style={{ fontWeight: 600 }}>Doctor: {app.doctor?.full_name} ({app.doctor?.department})</div>
-                                <div style={{ fontSize: '13px', color: '#64748b' }}>Date: {app.date} | Time: {app.time}</div>
+                                <div style={{ fontSize: '13px', color: '#64748b' }}>Date: {formatDateString(app.date)} | Time: {app.time}</div>
                                 <div style={{ fontSize: '12px', color: '#059669', marginTop: '4px' }}>Price: ${app.price}</div>
                               </div>
                               <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>

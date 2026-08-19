@@ -1,8 +1,12 @@
 import React from 'react';
 
 const ParentCard = ({ parent, onClick }) => {
-  const fullName = `${parent.first_name} ${parent.last_name}`;
-  const childrenCount = parent.children?.length || 0;
+  const fullName = `${parent.first_name || ''} ${parent.last_name || ''}`.trim() || 'No Name';
+
+  // التحقق من عدد الأطفال سواء جاء كـ number أو كمصفوفة
+  const childrenCount = typeof parent.children_count === 'number'
+    ? parent.children_count
+    : (Array.isArray(parent.children) ? parent.children.length : 0);
 
   return (
     <div className="parent-card" onClick={() => onClick(parent)}>
@@ -11,8 +15,8 @@ const ParentCard = ({ parent, onClick }) => {
       </div>
       <div className="parent-card-info">
         <h3 className="parent-card-name">{fullName}</h3>
-        <p className="parent-card-email">{parent.email}</p>
-        <p className="parent-card-phone">{parent.phone_number}</p>
+        <p className="parent-card-email">{parent.email || 'No email'}</p>
+        <p className="parent-card-phone">{parent.phone_number || 'No phone'}</p>
         <div className="parent-card-footer">
           <span className="parent-card-address">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

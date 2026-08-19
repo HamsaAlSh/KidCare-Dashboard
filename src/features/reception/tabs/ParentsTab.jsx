@@ -4,35 +4,42 @@ import ParentCard from '../components/ParentCard';
 import AddParentModal from '../components/AddParentModal';
 import ParentProfileModal from '../components/ParentProfileModal';
 
-const STORAGE_KEY = 'kidcare_created_parents';
-
 export default function ParentsTab() {
-  const [parents, setParents] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [loading, setLoading] = useState(false);
+  const [parents, setParents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState(null);
 
-  // Persist to localStorage whenever parents change
+  // دالة جلب كل البروفايلات من الـ API
+  const fetchParents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get('/parents/profiles');
+      
+      // مطابقة هيكلية الـ Response الموضحة بالـ Postman
+      if (response.data && response.data.users) {
+        setParents(response.data.users);
+      } else {
+        setParents([]);
+      }
+    } catch (err) {
+      console.error('Error fetching parent profiles:', err);
+      setError('Failed to load parents profiles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(parents));
-  }, [parents]);
+    fetchParents();
+  }, []);
 
   const handleAddSuccess = (newParent) => {
-    // Add to local list with basic info
-    const parentEntry = {
-      id: newParent.id,
-      first_name: newParent.first_name,
-      last_name: newParent.last_name,
-      email: newParent.email,
-      phone_number: newParent.phone_number,
-      address: newParent.address,
-      created_at: new Date().toISOString(),
-    };
-    setParents(prev => [parentEntry, ...prev]);
+    // إضافة الحساب الجديد فوراً للقائمة أو إعادة طلب البيانات من الـ API
+    setParents(prev => [newParent, ...prev]);
   };
 
   const handleUpdateSuccess = (updatedParent) => {
@@ -43,8 +50,8 @@ export default function ParentsTab() {
     ));
   };
 
-    const filteredParents = parents.filter(p => {
-    const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+  const filteredParents = parents.filter(p => {
+    const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
     const search = searchTerm.toLowerCase();
     return fullName.includes(search) ||
            p.email?.toLowerCase().includes(search) ||
@@ -56,7 +63,7 @@ export default function ParentsTab() {
       <div className="parents-header">
         <div>
           <h2 className="page-title">Parent Profiles</h2>
-          <p className="parents-subtitle">{parents.length} parent{parents.length !== 1 ? 's' : ''} created</p>
+          <p className="parents-subtitle">{parents.length} parent{parents.length !== 1 ? 's' : ''} registered</p>
         </div>
         <div className="parents-header-right">
           <div className="search-box">
@@ -81,7 +88,18 @@ export default function ParentsTab() {
         </div>
       </div>
 
-      {filteredParents.length === 0 ? (
+      {/* حالة التحميل */}
+      {loading ? (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading profiles...</p>
+        </div>
+      ) : error ? (
+        <div className="error-state">
+          <p className="alert alert-error">{error}</p>
+          <button className="btn btn-secondary btn-sm" onClick={fetchParents}>Retry</button>
+        </div>
+      ) : filteredParents.length === 0 ? (
         <div className="empty-state">
           <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -89,8 +107,8 @@ export default function ParentsTab() {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
-          <h3>No parents created yet</h3>
-          <p>Click "Add Parent" to create your first parent account</p>
+          <h3>No parents found</h3>
+          <p>There are no profiles matching your search or registered yet.</p>
         </div>
       ) : (
         <div className="parents-grid">

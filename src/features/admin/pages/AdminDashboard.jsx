@@ -652,7 +652,7 @@ const AdminDashboard = () => {
                 <i className="fa-solid fa-magnifying-glass"></i>
                 <input 
                   type="text" 
-                  placeholder="Search doctors, staff..." 
+                  placeholder="Search doctors" 
                   value={searchQuery} 
                   onChange={(e) => {
                     const value = e.target.value;
