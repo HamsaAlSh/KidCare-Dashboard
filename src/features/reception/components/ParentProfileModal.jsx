@@ -52,15 +52,31 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
     setFormValues(prev => ({ ...prev, [name]: value }));
   };
 
+  const formatPhoneNumber = (phone) => {
+    let cleanPhone = phone.trim();
+    if (cleanPhone.startsWith('09')) {
+      cleanPhone = '963' + cleanPhone.slice(1);
+    } else if (cleanPhone.startsWith('00963')) {
+      cleanPhone = cleanPhone.replace('00963', '963');
+    } else if (cleanPhone.startsWith('+963')) {
+      cleanPhone = cleanPhone.replace('+963', '963');
+    } else if (!cleanPhone.startsWith('963')) {
+      cleanPhone = '963' + cleanPhone;
+    }
+    return cleanPhone;
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError('');
 
+    const formattedPhone = formatPhoneNumber(formValues.phone_number);
+
     const formData = {
       parent_id: parentId,
       email: formValues.email.trim(),
-      phone_number: formValues.phone_number.trim(),
+      phone_number: formattedPhone,
       address: formValues.address.trim(),
     };
 
@@ -217,7 +233,15 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Phone Number</label>
-                    <input type="tel" name="phone_number" className="form-input" value={formValues.phone_number} onChange={handleInputChange} required />
+                    <input 
+                      type="tel" 
+                      name="phone_number" 
+                      className="form-input" 
+                      placeholder="963xxxxxxxx"
+                      value={formValues.phone_number} 
+                      onChange={handleInputChange} 
+                      required 
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Email</label>

@@ -12,11 +12,24 @@ export default function AddParentModal({ isOpen, onClose, onSuccess }) {
     setLoading(true);
     setError('');
 
+    let phone = e.target.phone_number.value.trim();
+
+    // ✅ التأكد من تنسيق الرقم ليبدأ بـ 963 دائماً
+    if (phone.startsWith('09')) {
+      phone = '963' + phone.slice(1);
+    } else if (phone.startsWith('00963')) {
+      phone = phone.replace('00963', '963');
+    } else if (phone.startsWith('+963')) {
+      phone = phone.replace('+963', '963');
+    } else if (!phone.startsWith('963')) {
+      phone = '963' + phone;
+    }
+
     const formData = {
       first_name: e.target.first_name.value.trim(),
       last_name: e.target.last_name.value.trim(),
       email: e.target.email.value.trim(),
-      phone_number: e.target.phone_number.value.trim(),
+      phone_number: phone,
       address: e.target.address.value.trim(),
     };
 
@@ -51,14 +64,21 @@ export default function AddParentModal({ isOpen, onClose, onSuccess }) {
             </div>
             <div className="form-group">
               <label className="form-label">Last Name <span className="required">*</span></label>
-              <input type="text" name="last_name" className="form-input" placeholder="e.g. All" required />
+              <input type="text" name="last_name" className="form-input" placeholder="e.g. Ali" required />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Phone Number <span className="required">*</span></label>
-              <input type="tel" name="phone_number" className="form-input" placeholder="09xxxxxxxx" required />
+              <input 
+                type="tel" 
+                name="phone_number" 
+                className="form-input" 
+                placeholder="963xxxxxxxx" 
+                defaultValue="963"
+                required 
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Email <span className="required">*</span></label>

@@ -8,6 +8,22 @@ const ParentCard = ({ parent, onClick }) => {
     ? parent.children_count
     : (Array.isArray(parent.children) ? parent.children.length : 0);
 
+  // تنسيق رقم الهاتف ليظهر بالبادئة 963
+  const formatPhone = (phone) => {
+    if (!phone) return 'No phone';
+    let cleanPhone = phone.toString().trim();
+    if (cleanPhone.startsWith('09')) {
+      cleanPhone = '963' + cleanPhone.slice(1);
+    } else if (cleanPhone.startsWith('00963')) {
+      cleanPhone = cleanPhone.replace('00963', '963');
+    } else if (cleanPhone.startsWith('+963')) {
+      cleanPhone = cleanPhone.replace('+963', '963');
+    } else if (!cleanPhone.startsWith('963')) {
+      cleanPhone = '963' + cleanPhone;
+    }
+    return cleanPhone;
+  };
+
   return (
     <div className="parent-card" onClick={() => onClick(parent)}>
       <div className="parent-card-avatar">
@@ -16,7 +32,7 @@ const ParentCard = ({ parent, onClick }) => {
       <div className="parent-card-info">
         <h3 className="parent-card-name">{fullName}</h3>
         <p className="parent-card-email">{parent.email || 'No email'}</p>
-        <p className="parent-card-phone">{parent.phone_number || 'No phone'}</p>
+        <p className="parent-card-phone">{formatPhone(parent.phone_number)}</p>
         <div className="parent-card-footer">
           <span className="parent-card-address">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
