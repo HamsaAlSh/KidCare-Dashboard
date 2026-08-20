@@ -1,10 +1,11 @@
 import React from 'react';
+
 const ParentCard = ({ parent, onClick }) => {
   const fullName = `${parent.first_name || ''} ${parent.last_name || ''}`.trim() || 'No Name';
 
-  const childrenCount = typeof parent.children_count === 'number'
-    ? parent.children_count
-    : (Array.isArray(parent.children) ? parent.children.length : 0);
+  const childrenCount = Array.isArray(parent.children)
+    ? parent.children.length
+    : (typeof parent.children_count === 'number' ? parent.children_count : 0);
 
   const formatPhone = (phone) => {
     if (!phone) return 'No phone';

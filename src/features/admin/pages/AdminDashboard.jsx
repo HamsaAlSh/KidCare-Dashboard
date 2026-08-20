@@ -101,7 +101,6 @@ const AdminDashboard = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  // Pagination state
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -364,8 +363,14 @@ const AdminDashboard = () => {
   };
 
   const handleDoctorUpdate = (updatedDoctor) => {
-  
-    window.location.reload();
+    setDoctorsData(prev => 
+      prev.map(doc => doc.id === updatedDoctor.id ? updatedDoctor : doc)
+    );
+    setAllDoctorsForStats(prev => 
+      prev.map(doc => doc.id === updatedDoctor.id ? updatedDoctor : doc)
+    );
+    setSelectedDoctor(updatedDoctor);
+    addNotification('Doctor updated successfully!', 'success');
   };
 
   const handleDeleteDoctor = async (doctorId) => {
@@ -373,7 +378,7 @@ const AdminDashboard = () => {
       await api.delete(`/doctors/${doctorId}`);
 
       setDoctorsData(prev => prev.filter(d => d.id !== doctorId));
-      await fetchDoctors(1);
+      setAllDoctorsForStats(prev => prev.filter(d => d.id !== doctorId));
 
       setShowDoctorProfile(false);
       setSelectedDoctor(null);
@@ -382,7 +387,16 @@ const AdminDashboard = () => {
 
     } catch (error) {
       console.error('Failed to delete doctor:', error);
-      addNotification('Failed to delete doctor', 'error');
+
+      if (error.response?.status === 404) {
+        addNotification('Doctor already deleted or not found', 'info');
+        setDoctorsData(prev => prev.filter(d => d.id !== doctorId));
+        setAllDoctorsForStats(prev => prev.filter(d => d.id !== doctorId));
+        setShowDoctorProfile(false);
+        setSelectedDoctor(null);
+      } else {
+        addNotification('Failed to delete doctor', 'error');
+      }
     }
   };
 

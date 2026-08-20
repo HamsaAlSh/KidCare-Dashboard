@@ -18,16 +18,17 @@ export function AuthProvider({ children }) {
       : 'https://kidcare.sy/api/loginReceptionist';
 
     try {
+      const params = new URLSearchParams();
+      params.append('phone_number', phoneNumber);
+      params.append('password', password);
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-          password: password
-        })
+        body: params.toString()
       });
 
       const data = await response.json();
@@ -37,7 +38,7 @@ export function AuthProvider({ children }) {
           ...data.user,
           role: role
         };
-        
+
         if (role === 'admin') {
           sessionStorage.setItem('admin_token', data.Token);
           sessionStorage.setItem('admin_user', JSON.stringify(userWithRole));
@@ -45,7 +46,7 @@ export function AuthProvider({ children }) {
           sessionStorage.setItem('reception_token', data.Token);
           sessionStorage.setItem('reception_user', JSON.stringify(userWithRole));
         }
-        
+
         setUser(userWithRole);
         return { success: true };
       } else {
@@ -70,4 +71,5 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 export const useAuth = () => useContext(AuthContext);

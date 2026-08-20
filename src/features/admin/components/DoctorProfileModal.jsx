@@ -107,34 +107,37 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const formData = new FormData();
-      formData.append('_method', 'PUT');
+      const params = new URLSearchParams();
+      params.append('first_name', editData.first_name || '');
+      params.append('last_name', editData.last_name || '');
+      params.append('phone_number', editData.phone_number || '');
+      params.append('email', editData.email || '');
+      params.append('address', editData.address || '');
+      params.append('experience_years', editData.experience_years ?? '');
+      params.append('education', editData.education || '');
+      params.append('fee', editData.fee ?? '');
+      params.append('commission_percentage', editData.commission_percentage ?? '');
 
-      formData.append('first_name', editData.first_name || '');
-      formData.append('last_name', editData.last_name || '');
-      formData.append('phone_number', editData.phone_number || '');
-      formData.append('email', editData.email || '');
-      formData.append('address', editData.address || '');
-      formData.append('experience_years', editData.experience_years ?? '');
-      formData.append('education', editData.education || '');
-      formData.append('fee', editData.fee ?? '');
-      formData.append('commission_percentage', editData.commission_percentage ?? '');
-
-      const response = await api.post(`/doctors/${doctor.id}/update`, formData, {
+      const response = await api.put(`/doctors/${doctor.id}/update`, params, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
 
       if (response.data.status === 'success') {
-        const updatedDoctor = response.data.data;
+        let updatedDoctor = response.data.data;
+
+        if (!updatedDoctor.department && doctor.department) {
+          updatedDoctor.department = doctor.department;
+        }
+
         const normalizedUpdatedDoctor = normalizeDoctor(updatedDoctor);
 
         setIsEditing(false);
         if (onUpdate && normalizedUpdatedDoctor) {
           onUpdate(normalizedUpdatedDoctor);
         }
-        alert('Doctor updated successfully!');
+        onClose();
       } else {
         alert((response.data.message || 'Unknown response'));
       }
@@ -166,8 +169,6 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
     setIsDeleting(true);
     try {
-      await api.delete(`/doctors/${doctor.id}`);
-      alert('Doctor deleted successfully!');
       onDelete?.(doctor.id);
       onClose();
     } catch (error) {

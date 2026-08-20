@@ -17,7 +17,7 @@ export default function ParentsTab() {
       setLoading(true);
       setError(null);
       const response = await api.get('/parents/profiles');
-      
+
       if (response.data && response.data.users) {
         setParents(response.data.users);
       } else {
@@ -40,16 +40,21 @@ export default function ParentsTab() {
   };
 
   const handleUpdateSuccess = (updatedParent) => {
-    setParents(prev => prev.map(p =>
-      p.id === updatedParent.id
-        ? { ...p, ...updatedParent }
-        : p
-    ));
+    setParents(prev => prev.map(p => {
+      if (p.id === updatedParent.id) {
+        return {
+          ...p,
+          ...updatedParent,
+          children: updatedParent.children || p.children,
+          children_count: updatedParent.children_count ?? p.children_count ?? (Array.isArray(p.children) ? p.children.length : 0)
+        };
+      }
+      return p;
+    }));
   };
 
   const handleModalClose = () => {
     setSelectedParentId(null);
-    fetchParents();
   };
 
   const filteredParents = parents.filter(p => {
