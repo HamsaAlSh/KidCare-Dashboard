@@ -12,14 +12,12 @@ export default function ParentsTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState(null);
 
-  // دالة جلب كل البروفايلات من الـ API
   const fetchParents = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await api.get('/parents/profiles');
       
-      // مطابقة هيكلية الـ Response الموضحة بالـ Postman
       if (response.data && response.data.users) {
         setParents(response.data.users);
       } else {
@@ -38,7 +36,6 @@ export default function ParentsTab() {
   }, []);
 
   const handleAddSuccess = (newParent) => {
-    // إضافة الحساب الجديد فوراً للقائمة أو إعادة طلب البيانات من الـ API
     setParents(prev => [newParent, ...prev]);
   };
 
@@ -50,12 +47,22 @@ export default function ParentsTab() {
     ));
   };
 
+  const handleModalClose = () => {
+    setSelectedParentId(null);
+    fetchParents();
+  };
+
   const filteredParents = parents.filter(p => {
-    const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
     const search = searchTerm.toLowerCase();
+    const firstName = (p.first_name || '').toLowerCase();
+    const lastName = (p.last_name || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`;
+    const email = (p.email || '').toLowerCase();
+    const phone = p.phone_number || '';
+
     return fullName.includes(search) ||
-           p.email?.toLowerCase().includes(search) ||
-           p.phone_number?.includes(search);
+           email.includes(search) ||
+           phone.includes(search);
   });
 
   return (
@@ -88,7 +95,6 @@ export default function ParentsTab() {
         </div>
       </div>
 
-      {/* حالة التحميل */}
       {loading ? (
         <div className="loading-state">
           <div className="spinner"></div>
@@ -104,7 +110,7 @@ export default function ParentsTab() {
           <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M23 21v-2a4 4 0 0 1 0 7.75"/>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
           <h3>No parents found</h3>
@@ -130,7 +136,7 @@ export default function ParentsTab() {
 
       <ParentProfileModal
         isOpen={!!selectedParentId}
-        onClose={() => setSelectedParentId(null)}
+        onClose={handleModalClose}
         parentId={selectedParentId}
         onUpdate={handleUpdateSuccess}
       />

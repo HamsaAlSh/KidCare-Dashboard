@@ -3,12 +3,10 @@ import React from 'react';
 const ParentCard = ({ parent, onClick }) => {
   const fullName = `${parent.first_name || ''} ${parent.last_name || ''}`.trim() || 'No Name';
 
-  // التحقق من عدد الأطفال سواء جاء كـ number أو كمصفوفة
   const childrenCount = typeof parent.children_count === 'number'
     ? parent.children_count
     : (Array.isArray(parent.children) ? parent.children.length : 0);
 
-  // تنسيق رقم الهاتف ليظهر بالبادئة 963
   const formatPhone = (phone) => {
     if (!phone) return 'No phone';
     let cleanPhone = phone.toString().trim();

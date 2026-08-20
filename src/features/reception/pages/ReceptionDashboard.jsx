@@ -4,7 +4,6 @@ import Sidebar from '../components/Sidebar';
 import DashboardTab from '../tabs/DashboardTab';
 import AppointmentsTab from '../tabs/AppointmentsTab';
 import AddAccountTab from '../tabs/ParentsTab';
-
 import VaccinesTab from '../tabs/VaccinesTab'; 
 import './ReceptionDashboard.css';
 
@@ -13,7 +12,6 @@ const pageTitles = {
   appointments: 'Appointments',
   vaccines: 'Vaccines & Immunization', 
   'add-account': 'Add Account',
-  
 };
 
 const LiveClock = () => {
@@ -41,14 +39,6 @@ export default function ReceptionDashboard() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const handlePaymentToggle = useCallback((id) => {
-    const apt = appointments.find(a => a.id === id);
-    if (apt) {
-      apt.paid = !apt.paid;
-      showToast(apt.paid ? 'Payment confirmed' : 'Payment cancelled');
-    }
-  }, [showToast]);
-
   return (
     <div className="app-container">
       <Sidebar activePage={activePage} onPageChange={setActivePage} />
@@ -61,12 +51,21 @@ export default function ReceptionDashboard() {
           </div>
         </header>
 
-        {activePage === 'dashboard' && <DashboardTab />}
-        {activePage === 'appointments' && <AppointmentsTab onPaymentToggle={handlePaymentToggle} />}
-        {activePage === 'vaccines' && <VaccinesTab onToast={showToast} />}
-        {activePage === 'add-account' && <AddAccountTab onToast={showToast} />}
-        
-        
+        <div style={{ display: activePage === 'dashboard' ? 'block' : 'none' }}>
+          <DashboardTab />
+        </div>
+
+        <div style={{ display: activePage === 'appointments' ? 'block' : 'none' }}>
+          <AppointmentsTab showToast={showToast} />
+        </div>
+
+        <div style={{ display: activePage === 'vaccines' ? 'block' : 'none' }}>
+          <VaccinesTab onToast={showToast} />
+        </div>
+
+        <div style={{ display: activePage === 'add-account' ? 'block' : 'none' }}>
+          <AddAccountTab onToast={showToast} />
+        </div>
       </main>
 
       {toast && (

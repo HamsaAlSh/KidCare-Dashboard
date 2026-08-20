@@ -93,23 +93,27 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
   const [departmentsShare, setDepartmentsShare] = useState([]);
   const [weeklyAppointmentsData, setWeeklyAppointmentsData] = useState([]);
 
-  
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchAllDoctorsPages = async () => {
       try {
-        let allDoctors = [];
-        let currentPage = 1;
-        let lastPage = 1;
+        const firstPageRes = await api.get('/doctors?page=1', { signal: controller.signal });
+        const firstPageData = firstPageRes.data?.data || [];
+        const lastPage = firstPageRes.data?.pagination?.last_page || 1;
 
-        do {
-          const response = await api.get(`/doctors?page=${currentPage}`);
-          const data = response.data?.data || [];
-          const pagination = response.data?.pagination || {};
+        let allDoctors = [...firstPageData];
 
-          allDoctors = [...allDoctors, ...data];
-          lastPage = pagination.last_page || 1;
-          currentPage++;
-        } while (currentPage <= lastPage);
+        if (lastPage > 1) {
+          const pagePromises = [];
+          for (let page = 2; page <= lastPage; page++) {
+            pagePromises.push(api.get(`/doctors?page=${page}`, { signal: controller.signal }));
+          }
+          const extraResponses = await Promise.all(pagePromises);
+          extraResponses.forEach(res => {
+            allDoctors = [...allDoctors, ...(res.data?.data || [])];
+          });
+        }
 
         const formatted = allDoctors.map(doc => ({
           id: doc.id,
@@ -118,25 +122,27 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
 
         setDoctorsList(formatted);
       } catch (error) {
-        console.error('Error fetching doctors:', error);
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          console.error('Error fetching doctors:', error);
+        }
       }
     };
 
     fetchAllDoctorsPages();
+    return () => controller.abort();
   }, []);
 
- 
   useEffect(() => {
     if (doctorsList.length > 0 && !selectedDoctorId) {
       setSelectedDoctorId(doctorsList[0].id);
     }
   }, [doctorsList, selectedDoctorId, setSelectedDoctorId]);
 
-
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchStatistics = async () => {
       setLoading(true);
-
       const doctorId = selectedDoctorId || doctorsList[0]?.id;
 
       if (!doctorId) {
@@ -144,85 +150,85 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
         return;
       }
 
-      
       try {
-        const response = await api.get('/reports/children-age-distribution');
-        if (response.data?.status === 'success') {
-          setAgeDistribution(response.data.data?.map(item => ({
+        const results = await Promise.allSettled([
+          api.get('/reports/children-age-distribution', { signal: controller.signal }),
+          api.get(`/reports/${doctorId}/weekly-stats`, { signal: controller.signal }),
+          api.get('/reports/weekly-summary', { signal: controller.signal }),
+          api.get('/reports/monthly-budget', { signal: controller.signal }),
+          api.get('/reports/top-three-departments-share', { signal: controller.signal }),
+          api.get('/reports/appointments-per-weekday', { signal: controller.signal }),
+        ]);
+
+        const [ageRes, docStatsRes, summaryRes, budgetRes, deptsRes, weeklyRes] = results;
+
+        if (ageRes.status === 'fulfilled' && ageRes.value.data?.status === 'success') {
+          setAgeDistribution(ageRes.value.data.data?.map(item => ({
             age: item.age_range,
             count: item.children_count
           })) || []);
         }
-      } catch (e) { /* silent fail */ }
 
-            try {
-        const response = await api.get(`/reports/${doctorId}/weekly-stats`);
-        if (response.data?.status === 'success') {
-          setWeeklyStats(response.data.data);
+        if (docStatsRes.status === 'fulfilled' && docStatsRes.value.data?.status === 'success') {
+          setWeeklyStats(docStatsRes.value.data.data);
+        } else {
+          setWeeklyStats(null);
         }
-      } catch (e) { 
-        setWeeklyStats(null);
+
+        if (summaryRes.status === 'fulfilled' && summaryRes.value.data?.status === 'success') {
+          setWeeklySummary(summaryRes.value.data.data);
+        }
+
+        if (budgetRes.status === 'fulfilled' && budgetRes.value.data?.status === 'success') {
+          setMonthlyBudget(budgetRes.value.data.data || []);
+        }
+
+        if (deptsRes.status === 'fulfilled' && deptsRes.value.data?.status === 'success') {
+          setDepartmentsShare(deptsRes.value.data.data || []);
+        }
+
+        if (weeklyRes.status === 'fulfilled' && weeklyRes.value.data?.status === 'success') {
+          setWeeklyAppointmentsData(weeklyRes.value.data.data || []);
+        }
+      } catch (error) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          console.error('Error fetching statistics:', error);
+        }
+      } finally {
+        setLoading(false);
       }
-
-      // 3. Weekly Summary
-      try {
-        const response = await api.get('/reports/weekly-summary');
-        if (response.data?.status === 'success') {
-          setWeeklySummary(response.data.data);
-        }
-      } catch (e) { /* silent fail */ }
-
-      // 4. Monthly Budget
-      try {
-        const response = await api.get('/reports/monthly-budget');
-        if (response.data?.status === 'success') {
-          setMonthlyBudget(response.data.data || []);
-        }
-      } catch (e) { /* silent fail */ }
-
-      // 5. Departments Share
-      try {
-        const response = await api.get('/reports/top-three-departments-share');
-        if (response.data?.status === 'success') {
-          setDepartmentsShare(response.data.data || []);
-        }
-      } catch (e) { /* silent fail */ }
-
-      // 6. Weekly Appointments
-      try {
-        const response = await api.get('/reports/appointments-per-weekday');
-        if (response.data?.status === 'success') {
-          setWeeklyAppointmentsData(response.data.data || []);
-        }
-      } catch (e) { /* silent fail */ }
-
-      setLoading(false);
     };
 
     if (doctorsList.length > 0) {
       fetchStatistics();
     }
-  }, [selectedDoctorId, doctorsList]);
+
+    return () => controller.abort();
+  }, [doctorsList]);
 
   useEffect(() => {
-    if (!selectedDoctorId) return;
-
+    if (!selectedDoctorId || doctorsList.length === 0) return;
 
     const doctorExists = doctorsList.some(doc => doc.id === selectedDoctorId);
     if (!doctorExists) return;
 
+    const controller = new AbortController();
+
     const fetchDoctorStats = async () => {
       try {
-        const response = await api.get(`/reports/${selectedDoctorId}/weekly-stats`);
+        const response = await api.get(`/reports/${selectedDoctorId}/weekly-stats`, { signal: controller.signal });
         if (response.data?.status === 'success') {
           setWeeklyStats(response.data.data);
         }
       } catch (e) {
-        setWeeklyStats(null);
+        if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
+          setWeeklyStats(null);
+        }
       }
     };
 
     fetchDoctorStats();
+    return () => controller.abort();
   }, [selectedDoctorId, doctorsList]);
 
   const doctorOptions = doctorsList.map(doc => ({
@@ -230,7 +236,6 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
     label: doc.name
   }));
 
- 
   const selectedOption = doctorOptions.find(opt => opt.value === selectedDoctorId) || null;
 
   const monthlyRevenue = monthlyBudget.map(item => ({
@@ -255,24 +260,27 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
     if (!weeklyStats) return [];
 
     return [
-      { subject: 'Appointments', A: Math.min(((weeklyStats.weekly_appointments || 0) / 50) * 100, 100), fullMark: 100 },
-      { subject: 'Patients', A: Math.min(((weeklyStats.weekly_patients || 0) / 30) * 100, 100), fullMark: 100 },
-      { subject: 'Hours', A: Math.min(((weeklyStats.weekly_working_hours || 0) / 40) * 100, 100), fullMark: 100 },
-      { subject: 'Experience', A: Math.min(((weeklyStats.experience_years || 0) / 15) * 100, 100), fullMark: 100 },
+      { subject: 'Appointments', A: Math.round(Math.min(((weeklyStats.weekly_appointments || 0) / 50) * 100, 100)), fullMark: 100 },
+      { subject: 'Patients', A: Math.round(Math.min(((weeklyStats.weekly_patients || 0) / 30) * 100, 100)), fullMark: 100 },
+      { subject: 'Hours', A: Math.round(Math.min(((weeklyStats.weekly_working_hours || 0) / 40) * 100, 100)), fullMark: 100 },
+      { subject: 'Experience', A: Math.round(Math.min(((weeklyStats.experience_years || 0) / 15) * 100, 100)), fullMark: 100 },
     ];
   };
 
   if (loading) {
     return (
       <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
-        <div className="loading-spinner">Loading statistics...</div>
+        <div className="loading-spinner" style={{ textAlign: 'center', padding: '40px' }}>
+          <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '2rem', marginBottom: '10px' }}></i>
+          <p>Loading statistics...</p>
+        </div>
       </motion.div>
     );
   }
 
   return (
     <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
-      {/*  Weekly Summary Cards */}
+    
       <motion.div className="manager-insights-grid" variants={itemVariants}>
         <motion.div className="insight-card" whileHover={{ y: -3 }}>
           <div className="insight-icon" style={{ background: '#E8F5E9', color: '#66BB6A' }}>
@@ -315,8 +323,6 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
           </div>
         </motion.div>
       </motion.div>
-
-     
 
       <div className="charts-grid">
         <motion.div className="chart-card" variants={itemVariants}>

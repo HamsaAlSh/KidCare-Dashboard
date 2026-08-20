@@ -10,6 +10,13 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
 
   const [vaccines, setVaccines] = useState([]);
   const [vaccinesLoading, setVaccinesLoading] = useState(false);
+  const [recordingVaccine, setRecordingVaccine] = useState(false);
+
+  const [vaccineForm, setVaccineForm] = useState({
+    vaccine_id: '',
+    given_date: new Date().toISOString().split('T')[0],
+    notes: ''
+  });
 
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [pastAppointments, setPastAppointments] = useState([]);
@@ -78,6 +85,36 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
       console.error('Failed to fetch vaccine history:', err);
     } finally {
       setVaccinesLoading(false);
+    }
+  };
+
+  const handleRecordVaccine = async (e) => {
+    e.preventDefault();
+    if (!vaccineForm.vaccine_id) {
+      alert('Please enter a Vaccine ID');
+      return;
+    }
+    setRecordingVaccine(true);
+    try {
+      const formData = new FormData();
+      formData.append('child_id', childId);
+      formData.append('vaccine_id', vaccineForm.vaccine_id);
+      formData.append('given_date', vaccineForm.given_date);
+      formData.append('notes', vaccineForm.notes);
+
+      await api.post('/reception/child-vaccinations', formData);
+      alert('Vaccine record added successfully');
+      setVaccineForm({
+        vaccine_id: '',
+        given_date: new Date().toISOString().split('T')[0],
+        notes: ''
+      });
+      fetchVaccines();
+    } catch (err) {
+      console.error('Failed to record vaccine:', err);
+      alert('Failed to record vaccine given.');
+    } finally {
+      setRecordingVaccine(false);
     }
   };
 
@@ -246,6 +283,49 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
 
             {activeTab === 'vaccines' && (
               <div>
+               
+                <form onSubmit={handleRecordVaccine} style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 10px 0', color: '#1e293b' }}>Confirm Given Vaccine</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Vaccine ID</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        placeholder="Enter Vaccine ID (e.g. 1)"
+                        value={vaccineForm.vaccine_id} 
+                        onChange={e => setVaccineForm({...vaccineForm, vaccine_id: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Given Date</label>
+                      <input 
+                        type="date" 
+                        className="form-input" 
+                        value={vaccineForm.given_date} 
+                        onChange={e => setVaccineForm({...vaccineForm, given_date: e.target.value})}
+                        required 
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Notes</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. Child was healthy, no side effects observed." 
+                      value={vaccineForm.notes} 
+                      onChange={e => setVaccineForm({...vaccineForm, notes: e.target.value})} 
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={recordingVaccine}>
+                    {recordingVaccine ? 'Recording...' : 'Record Vaccine'}
+                  </button>
+                </form>
+
+                {/* History Table */}
+                <h4 style={{ margin: '10px 0', color: '#1e293b' }}>Vaccine History</h4>
                 {vaccinesLoading ? (
                   <div style={{ padding: '20px', textAlign: 'center' }}>Loading Vaccine History...</div>
                 ) : vaccines.length > 0 ? (
@@ -260,7 +340,7 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
                     <tbody>
                       {vaccines.map((v) => (
                         <tr key={v.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '10px', fontWeight: 600 }}>{v.vaccine_name}</td>
+                          <td style={{ padding: '10px', fontWeight: 600 }}>{v.vaccine_name || v.name || `Vaccine #${v.vaccine_id}`}</td>
                           <td style={{ padding: '10px' }}>{formatDateString(v.given_date)}</td>
                           <td style={{ padding: '10px', color: '#64748b' }}>{v.notes || '-'}</td>
                         </tr>

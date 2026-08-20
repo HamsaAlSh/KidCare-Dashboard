@@ -14,7 +14,7 @@ export default function AddParentModal({ isOpen, onClose, onSuccess }) {
 
     let phone = e.target.phone_number.value.trim();
 
-    // ✅ التأكد من تنسيق الرقم ليبدأ بـ 963 دائماً
+    
     if (phone.startsWith('09')) {
       phone = '963' + phone.slice(1);
     } else if (phone.startsWith('00963')) {

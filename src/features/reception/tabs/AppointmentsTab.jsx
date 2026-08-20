@@ -9,39 +9,54 @@ export default function AppointmentsTab() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modals status
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // 1. Fetch All Appointments & Sort by Date/Time
-  const fetchAppointments = async () => {
+  const sortAppointments = (list) => {
+    return Array.isArray(list)
+      ? [...list].sort((a, b) => {
+          const dateTimeA = new Date(`${a.date || ''} ${a.time || ''}`);
+          const dateTimeB = new Date(`${b.date || ''} ${b.time || ''}`);
+          return dateTimeA - dateTimeB;
+        })
+      : [];
+  };
+
+  const fetchAppointments = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
       const res = await api.get('/reception/appointments');
       const rawList = res.data?.appointments || res.data || [];
-
-      // فرز المواعيد حسب التاريخ والوقت تصاعدياً
-      const sortedList = Array.isArray(rawList)
-        ? [...rawList].sort((a, b) => {
-            const dateTimeA = new Date(`${a.date || ''} ${a.time || ''}`);
-            const dateTimeB = new Date(`${b.date || ''} ${b.time || ''}`);
-            return dateTimeA - dateTimeB;
-          })
-        : [];
-
-      setAppointments(sortedList);
+      setAppointments(sortAppointments(rawList));
     } catch (err) {
       console.error('Error fetching appointments:', err);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAppointments();
+    fetchAppointments(true);
   }, []);
 
-  // دالة مساعدة لجلب اسم الطفل مع التعامل مع مختلف تنسيقات الـ API
+  const handleAppointmentAdded = (newApt) => {
+    if (newApt) {
+      setAppointments(prev => sortAppointments([newApt, ...prev]));
+    }
+    fetchAppointments(false);
+  };
+
+  const handleAppointmentUpdated = () => {
+    fetchAppointments(false);
+  };
+
+  const handleAppointmentDeleted = (deletedId) => {
+    if (deletedId) {
+      setAppointments(prev => prev.filter(apt => apt.id !== deletedId));
+    }
+    fetchAppointments(false);
+  };
+
   const getChildName = (apt) => {
     if (apt.child_first_name) return `${apt.child_first_name} ${apt.child_last_name || ''}`;
     if (apt.child?.first_name) return `${apt.child.first_name} ${apt.child.last_name || ''}`;
@@ -50,7 +65,6 @@ export default function AppointmentsTab() {
     return 'غير محدد';
   };
 
-  // دالة مساعدة لجلب اسم الطبيب مع التعامل مع مختلف تنسيقات الـ API
   const getDoctorName = (apt) => {
     if (apt.doctor_first_name) return `Dr. ${apt.doctor_first_name} ${apt.doctor_last_name || ''}`;
     if (apt.doctor?.first_name) return `Dr. ${apt.doctor.first_name} ${apt.doctor.last_name || ''}`;
@@ -58,7 +72,6 @@ export default function AppointmentsTab() {
     return 'غير محدد';
   };
 
-  // Filter Search
   const filteredAppointments = appointments.filter((apt) => {
     const childName = getChildName(apt).toLowerCase();
     const doctorName = getDoctorName(apt).toLowerCase();
@@ -77,8 +90,6 @@ export default function AppointmentsTab() {
 
   return (
     <div className="tab-container" style={{ padding: '20px' }}>
-      
-      {/* Action Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, maxWidth: '360px' }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
@@ -99,7 +110,6 @@ export default function AppointmentsTab() {
         </button>
       </div>
 
-      {/* Appointments List / Table */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
           <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#3b82f6' }} />
@@ -172,23 +182,21 @@ export default function AppointmentsTab() {
         </div>
       )}
 
-      {/* 1. Modal: Details & Edit */}
       {selectedAppointmentId && (
         <AppointmentModal 
           appointmentId={selectedAppointmentId} 
           onClose={() => setSelectedAppointmentId(null)} 
-          onRefresh={fetchAppointments} 
+          onUpdated={handleAppointmentUpdated}
+          onDeleted={handleAppointmentDeleted}
         />
       )}
 
-      {/* 2. Modal: Add New Appointment */}
       {showAddModal && (
         <AddAppointmentModal 
           onClose={() => setShowAddModal(false)} 
-          onRefresh={fetchAppointments} 
+          onSuccess={handleAppointmentAdded}
         />
       )}
-
     </div>
   );
 }

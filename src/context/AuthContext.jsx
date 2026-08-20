@@ -70,6 +70,4 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-// ✅ لازم يكون موجود في آخر الملف:
 export const useAuth = () => useContext(AuthContext);

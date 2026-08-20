@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-// ==================== ANIMATION VARIANTS (inline) ====================
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
@@ -13,7 +13,6 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
-// ==================== UTILITY COMPONENTS ====================
 const AnimatedNumber = ({ value = 0, prefix = '', suffix = '' }) => {
   const [displayValue, setDisplayValue] = useState(0);
   useEffect(() => {

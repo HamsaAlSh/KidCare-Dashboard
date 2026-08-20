@@ -50,7 +50,6 @@ body {
   color: var(--text-primary);
 }
 
-/* ==================== SIDEBAR ==================== */
 .sidebar {
   width: 260px;
   background: linear-gradient(180deg, #FFFFFF 0%, #F0F9FF 100%);
@@ -180,7 +179,6 @@ body {
   font-weight: 600;
 }
 
-/* ==================== MAIN CONTENT ==================== */
 .main-content {
   flex: 1;
   margin-left: 260px;
@@ -271,7 +269,6 @@ body {
   border: 2px solid var(--bg-primary);
 }
 
-/* ==================== STATS CARDS ==================== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -358,7 +355,6 @@ body {
   color: var(--accent-green);
 }
 
-/* ==================== CONTENT GRID & TABLES ==================== */
 .content-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -429,7 +425,6 @@ body {
   border-bottom: none;
 }
 
-/* ==================== PATIENT & DOCTOR CELLS ==================== */
 .patient-cell {
   display: flex;
   align-items: center;
@@ -492,7 +487,6 @@ body {
   font-weight: 700;
 }
 
-/* ==================== BADGES ==================== */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -545,7 +539,6 @@ tr:hover .row-actions {
   opacity: 1;
 }
 
-/* ==================== TOOLBAR & INPUTS ==================== */
 .page-toolbar {
   display: flex;
   justify-content: space-between;
@@ -627,7 +620,6 @@ tr:hover .row-actions {
   box-shadow: var(--shadow-glow);
 }
 
-/* ==================== FORMS ==================== */
 .form-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -744,7 +736,6 @@ textarea.form-input {
   font-size: 12px;
 }
 
-/* ==================== CHARTS & REVENUE ==================== */
 .chart-container {
   padding: 24px;
   height: 240px;
@@ -819,7 +810,6 @@ textarea.form-input {
   font-variant-numeric: tabular-nums;
 }
 
-/* ==================== TOGGLES & UTILS ==================== */
 .toggle-row {
   display: flex;
   justify-content: space-between;
@@ -952,7 +942,6 @@ textarea.form-input {
   opacity: 1;
 }
 
-/* ==================== RESPONSIVE DESIGN ==================== */
 @media (max-width: 1200px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .content-grid { grid-template-columns: 1fr; }
@@ -967,13 +956,11 @@ textarea.form-input {
   .filter-tabs { overflow-x: auto; }
 }
 
-/* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 4px; opacity: 0.3; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-/* --- Parents Header & Grid --- */
 .parents-tab { padding: 0; }
 .parents-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; }
 .parents-subtitle { color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.95rem; font-weight: 600; }
@@ -981,7 +968,6 @@ textarea.form-input {
 .add-btn { display: flex; align-items: center; gap: 8px; }
 .parents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
 
-/* --- Parent Card --- */
 .parent-card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 2px 12px rgba(79, 195, 247, 0.08); cursor: pointer; transition: var(--transition); display: flex; gap: 16px; align-items: flex-start; }
 .parent-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); border-color: var(--accent-blue); }
 .parent-card-avatar { width: 56px; height: 56px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 800; flex-shrink: 0; }
@@ -991,7 +977,6 @@ textarea.form-input {
 .parent-card-address { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
 .children-badge { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--accent-blue); background: rgba(79, 195, 247, 0.1); padding: 4px 10px; border-radius: 20px; font-weight: 700; }
 
-/* --- Modals --- */
 .modal-overlay { position: fixed; inset: 0; background: rgba(21, 101, 192, 0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; animation: fadeIn 0.2s ease; }
 .child-modal-overlay { z-index: 1100; }
 .modal-content { max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease; width: 100%; }
@@ -1001,7 +986,6 @@ textarea.form-input {
 .modal-close { background: var(--bg-primary); border: none; width: 32px; height: 32px; border-radius: var(--radius-sm); font-size: 1.3rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); font-family: inherit; }
 .modal-close:hover { background: var(--accent-blue); color: white; }
 
-/* --- Profile View --- */
 .profile-view { animation: fadeIn 0.3s ease; }
 .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
 .profile-avatar-lg { width: 72px; height: 72px; border-radius: var(--radius-lg); background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; flex-shrink: 0; box-shadow: var(--shadow-glow); }
@@ -1012,7 +996,6 @@ textarea.form-input {
 .detail-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 700; }
 .detail-value { font-size: 0.9rem; color: var(--text-primary); font-weight: 800; direction: ltr; }
 
-/* --- Children --- */
 .children-section { margin-top: 20px; }
 .children-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .children-header h4 { margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 800; }
@@ -1022,7 +1005,6 @@ textarea.form-input {
 .child-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-blue); }
 .child-name { font-size: 0.85rem; font-weight: 800; color: var(--text-primary); }
 
-/* --- States --- */
 .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; }
 .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; gap: 16px; }
 .spinner { width: 40px; height: 40px; border: 3px solid var(--border-color); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
@@ -1032,12 +1014,10 @@ textarea.form-input {
 .text-muted { color: var(--text-muted); text-align: center; padding: 20px; font-weight: 600; }
 .text-center { text-align: center; }
 
-/* --- Animations --- */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- Responsive --- */
 @media (max-width: 640px) {
   .parents-header { flex-direction: column; align-items: stretch; }
   .parents-header-right { flex-direction: column; width: 100%; }
@@ -1046,7 +1026,7 @@ textarea.form-input {
   .profile-header { flex-direction: column; text-align: center; }
   .modal-content { margin: 10px; max-height: 95vh; }
 }
-/* ==================== STATUS BADGES FIX ==================== */
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -1062,7 +1042,6 @@ textarea.form-input {
   text-transform: capitalize;
 }
 
-/* تنسيقات اختيارية للحالات المحددة */
 .status-upcoming {
   background: rgba(79, 195, 247, 0.15);
   color: #0288d1;
@@ -1086,7 +1065,7 @@ textarea.form-input {
   color: #ef6c00;
   border-color: rgba(255, 152, 0, 0.3);
 }
-/* ==================== STATUS BADGES ==================== */
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -1097,13 +1076,11 @@ textarea.form-input {
   font-weight: 700;
 }
 
-
 .status-confirmed {
   background-color: rgba(79, 195, 247, 0.15);
   color: #0288d1;
   border: 1px solid rgba(79, 195, 247, 0.3);
 }
-
 
 .status-completed {
   background-color: rgba(102, 187, 106, 0.15);
@@ -1111,13 +1088,11 @@ textarea.form-input {
   border: 1px solid rgba(102, 187, 106, 0.3);
 }
 
-
 .status-cancelled {
   background-color: rgba(239, 83, 80, 0.15);
   color: #c62828;
   border: 1px solid rgba(239, 83, 80, 0.3);
 }
-
 
 .status-pending {
   background-color: rgba(255, 152, 0, 0.15);
@@ -1125,7 +1100,6 @@ textarea.form-input {
   border: 1px solid rgba(255, 152, 0, 0.3);
 }
 
-/* شبكة توزيع الكروت - تتكيف مع حجم الشاشة */
 .profile-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1133,21 +1107,19 @@ textarea.form-input {
   margin: 20px 0;
 }
 
-/* بطاقة المعلومة الواحدة */
 .detail-card {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   display: flex;
-  flex-direction: column; /* جعل العنوان فوق والقيمة تحت */
+  flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   gap: 6px;
   min-height: 72px;
 }
 
-/* عنوان الحقل */
 .detail-card .detail-label {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1156,11 +1128,10 @@ textarea.form-input {
   letter-spacing: 0.5px;
 }
 
-/* قيمة الحقل */
 .detail-card .detail-value {
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--text-primary);
-  word-break: break-word; /* منع الإيميل أو النص الطويل من التداخل مع الحدود */
+  word-break: break-word;
   line-height: 1.3;
 }

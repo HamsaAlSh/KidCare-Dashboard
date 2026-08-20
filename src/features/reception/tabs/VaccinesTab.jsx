@@ -55,8 +55,6 @@ const VaccinesTab = ({ onToast }) => {
     }
   };
 
-
-
   const fetchChildHistory = async (childId) => {
     if (!childId) return;
     try {
@@ -134,8 +132,6 @@ const VaccinesTab = ({ onToast }) => {
     }
   };
 
-
-
   const handleViewChildHistory = (childId) => {
     setSelectedChildId(childId);
     fetchChildHistory(childId);
@@ -191,7 +187,6 @@ const VaccinesTab = ({ onToast }) => {
           </button>
         ))}
       </div>
-
 
       {activeTab === 'vaccines' && (
         <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9' }}>

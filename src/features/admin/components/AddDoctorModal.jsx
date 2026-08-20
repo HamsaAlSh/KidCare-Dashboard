@@ -10,7 +10,7 @@ const saveDoctors = (doctors) => {
   localStorage.setItem('kidcare_doctors', JSON.stringify(doctors));
 };
 
-// ✅ فقط id و name - الباقي غير مستخدم
+
 const departmentsData = [
   { id: 1, name: 'Pediatrics' },
   { id: 2, name: 'Dentistry' },

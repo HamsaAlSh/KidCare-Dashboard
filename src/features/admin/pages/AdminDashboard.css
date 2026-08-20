@@ -1,4 +1,3 @@
-/* ==================== KIDCARE THEME VARIABLES ==================== */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
@@ -59,10 +58,8 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* ==================== LAYOUT ==================== */
 .admin-layout { display: flex; min-height: 100vh; background-color: var(--bg-main); }
 
-/* ==================== SIDEBAR ==================== */
 .sidebar-kidcare {
   background: linear-gradient(180deg, #FFFFFF 0%, #F0F9FF 100%);
   padding: 24px 16px;
@@ -198,7 +195,6 @@ body {
 
 .sidebar-toggle:hover { transform: scale(1.1); background: var(--primary-dark); }
 
-/* ==================== HEADER ==================== */
 .main-header {
   background: var(--bg-glass);
   backdrop-filter: blur(20px);
@@ -309,7 +305,6 @@ body {
 
 .admin-avatar:hover { border-color: var(--primary); transform: scale(1.1); }
 
-/* ==================== CONTENT ==================== */
 .content-container { padding: 24px 32px 32px; overflow-y: auto; flex: 1; }
 
 .page-content { display: flex; flex-direction: column; gap: 24px; }
@@ -322,7 +317,6 @@ body {
   gap: 16px;
 }
 
-/* ==================== FILTER TABS ==================== */
 .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .filter-tab {
@@ -362,7 +356,6 @@ body {
 
 .add-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(79, 195, 247, 0.35); }
 
-/* ==================== QUICK STATS ==================== */
 .quick-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 28px; }
 
 .quick-stat-card {
@@ -416,7 +409,6 @@ body {
 .trend.positive { color: var(--secondary); }
 .trend.neutral { color: var(--text-grey); }
 
-/* ==================== SECTIONS ==================== */
 .dashboard-section { background: transparent; }
 
 .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
@@ -442,7 +434,6 @@ body {
   50% { box-shadow: 0 0 0 8px rgba(79, 195, 247, 0); }
 }
 
-/* ==================== REQUESTS ==================== */
 .requests-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
 
 .request-card-kidcare {
@@ -527,7 +518,6 @@ body {
 
 .btn-reject:hover { background: #FFCDD2; transform: translateY(-1px); }
 
-/* ==================== STATS CARDS ==================== */
 .dashboard-stats-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
 .stats-column { display: flex; flex-direction: column; gap: 16px; }
@@ -572,7 +562,6 @@ body {
 
 .progress-fill { height: 100%; border-radius: 10px; transition: width 1.5s ease; }
 
-/* ==================== DOCTORS PAGE ==================== */
 .doctors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 
 .doctor-card {
@@ -618,7 +607,6 @@ body {
 
 .doctor-contact i { color: var(--primary); width: 16px; }
 
-/* ==================== STATUS BADGE ==================== */
 .status-badge {
   padding: 6px 12px;
   border-radius: 20px;
@@ -628,7 +616,6 @@ body {
   text-transform: capitalize;
 }
 
-/* ==================== APPOINTMENTS TABLE ==================== */
 .appointments-table-wrapper, .payments-table-wrapper {
   background: var(--bg-card);
   border-radius: var(--radius);
@@ -709,7 +696,6 @@ body {
 
 .action-btn.delete:hover { background: #E53935; color: white; }
 
-/* ==================== DEPARTMENTS ==================== */
 .departments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
 
 .department-card {
@@ -763,7 +749,6 @@ body {
 
 .donut-text { font-size: 11px; color: var(--text-grey); font-weight: 700; }
 
-/* ==================== PAYMENTS ==================== */
 .payments-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
 
 .payment-stat-card {
@@ -816,7 +801,6 @@ body {
   font-weight: 700;
 }
 
-/* ==================== STATISTICS / CHARTS ==================== */
 .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
 
 .chart-card {
@@ -844,7 +828,6 @@ body {
 
 .chart-title i { color: var(--primary); }
 
-/* ==================== MANAGER INSIGHTS ==================== */
 .manager-insights-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -905,7 +888,6 @@ body {
   font-weight: 600;
 }
 
-/* ==================== CAPACITY TABLE ==================== */
 .capacity-table-wrapper {
   overflow-x: auto;
 }
@@ -1010,7 +992,6 @@ body {
   background: #FFCDD2;
 }
 
-/* ==================== MY ACCOUNT ==================== */
 .account-card {
   background: var(--bg-card);
   padding: 32px;
@@ -1129,7 +1110,6 @@ body {
 
 .btn-secondary:hover { border-color: var(--primary); background: rgba(79, 195, 247, 0.05); }
 
-/* ==================== SETTINGS ==================== */
 .settings-card {
   background: var(--bg-card);
   padding: 32px;
@@ -1157,7 +1137,6 @@ body {
 
 .setting-item p { font-size: 13px; color: var(--text-grey); margin: 0; }
 
-/* Toggle Switch */
 .toggle-switch { position: relative; width: 52px; height: 28px; }
 
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -1191,7 +1170,6 @@ input:checked + .toggle-slider { background: linear-gradient(135deg, var(--prima
 
 input:checked + .toggle-slider:before { transform: translateX(24px); }
 
-/* ==================== LOADING ==================== */
 .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 
 .loading-card {
@@ -1219,7 +1197,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   100% { background-position: -200% 0; }
 }
 
-/* ==================== PLACEHOLDER ==================== */
 .placeholder-text {
   display: flex;
   flex-direction: column;
@@ -1237,7 +1214,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 
 .placeholder-text p { font-size: 15px; color: var(--text-light); font-weight: 600; }
 
-/* ==================== EMPTY STATE ==================== */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1254,7 +1230,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 
 .empty-state p { font-size: 18px; font-weight: 700; color: var(--text-grey); }
 
-/* ==================== TOAST ==================== */
 .toast-container {
   position: fixed;
   top: 24px;
@@ -1299,7 +1274,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 
 .toast-close:hover { background: rgba(0, 0, 0, 0.05); color: var(--text-main); }
 
-/* ==================== ANIMATIONS ==================== */
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
@@ -1307,7 +1281,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 
 .float-animation { animation: float 3s ease-in-out infinite; }
 
-/* ==================== RESPONSIVE ==================== */
 @media (max-width: 1200px) {
   .quick-stats-grid { grid-template-columns: repeat(2, 1fr); }
   .dashboard-stats-wrapper { grid-template-columns: 1fr; }
@@ -1343,7 +1316,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   .manager-insights-grid { grid-template-columns: 1fr; }
 }
 
-/* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 4px; opacity: 0.3; }
@@ -1364,8 +1336,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 .app-custom-logo:hover {
   transform: scale(1.05) rotate(-3deg);
 }
-
-/* ==================== MODAL STYLES ==================== */
 
 .modal-overlay {
   position: fixed;
@@ -1450,8 +1420,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   color: #E53935;
   transform: rotate(90deg);
 }
-
-/* ==================== FORM STYLES ==================== */
 
 .modal-body {
   padding: 24px 32px;
@@ -1540,7 +1508,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   font-size: 12px;
 }
 
-/* File Upload */
 .file-input-wrapper {
   display: flex;
   align-items: center;
@@ -1599,8 +1566,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   color: var(--text-light);
   font-weight: 600;
 }
-
-/* ==================== MODAL FOOTER ==================== */
 
 .modal-footer {
   display: flex;
@@ -1713,7 +1678,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   color: #0F172A;
   box-shadow: 0 4px 12px rgba(79, 195, 247, 0.2);
 }
-/* ==================== SMART INSIGHTS PANEL ==================== */
 
 .insights-panel {
   position: absolute;
@@ -1953,7 +1917,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   background: #FFEBEE;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .insights-panel {
     width: calc(100vw - 40px);
@@ -2002,9 +1965,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   box-sizing: border-box;
 }
 
-
-
-/* Doctor Profile Modal */
 .doctor-profile-overlay {
   z-index: 2000;
 }
@@ -2153,7 +2113,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   width: 16px;
 }
 
-/* Availability */
 .availability-list {
   display: flex;
   flex-direction: column;
@@ -2189,7 +2148,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   font-size: 14px;
 }
 
-/* Documents */
 .documents-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -2259,7 +2217,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   border-top: 1px solid #E0E0E0;
 }
 
-/* Dark mode */
 .dark .doctor-profile-header {
   background: linear-gradient(135deg, #29B6F6 0%, #0288D1 100%);
 }
@@ -2298,9 +2255,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   border-top-color: #37474F;
 }
 
-
-
-/* Edit Form Styles */
 .edit-form input,
 .edit-form select {
   width: 100%;
@@ -2322,7 +2276,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   gap: 16px;
 }
 
-/* Upload Card */
 .upload-card {
   border: 2px dashed #ddd;
   padding: 16px;
@@ -2346,7 +2299,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   margin-top: 4px;
 }
 
-/* Button Styles */
 .btn-edit {
   background: #2196F3;
   color: white;
@@ -2401,9 +2353,28 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 .modal-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
   margin-top: 20px;
+}
+.modal-content {
+  padding: 24px 28px; 
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h3 {
+  margin-bottom: 20px; 
+}
+
+.form-group {
+  margin-bottom: 16px; 
+}
+
+.modal-actions {
+  margin-top: 24px; 
 }

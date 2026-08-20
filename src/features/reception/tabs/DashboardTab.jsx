@@ -43,12 +43,13 @@ const colorMap = {
   pink: { bg: 'rgba(244,143,177,0.1)', icon: '#F48FB1', bar: '#F48FB1' },
 };
 
-const AnimatedNumber = ({ value, prefix = '', suffix = '' }) => {
+const AnimatedNumber = ({ value = 0, prefix = '', suffix = '' }) => {
   const [displayValue, setDisplayValue] = useState(0);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (value === 0) {
+    const numericValue = Number(value) || 0;
+    if (numericValue === 0) {
       setDisplayValue(0);
       if (timerRef.current) clearInterval(timerRef.current);
       return;
@@ -56,14 +57,14 @@ const AnimatedNumber = ({ value, prefix = '', suffix = '' }) => {
 
     if (timerRef.current) clearInterval(timerRef.current);
 
-    const duration = 1500, steps = 60;
-    const increment = value / steps;
+    const duration = 1200, steps = 40;
+    const increment = numericValue / steps;
     let current = 0;
 
     timerRef.current = setInterval(() => {
       current += increment;
-      if (current >= value) {
-        setDisplayValue(value);
+      if (current >= numericValue) {
+        setDisplayValue(numericValue);
         clearInterval(timerRef.current);
         timerRef.current = null;
       } else {
@@ -76,10 +77,10 @@ const AnimatedNumber = ({ value, prefix = '', suffix = '' }) => {
     };
   }, [value]);
 
-  return <span>{prefix}{displayValue.toLocaleString('en-US')}{suffix}</span>;
+  return <span>{prefix}{(displayValue || 0).toLocaleString('en-US')}{suffix}</span>;
 };
 
-const fmt = (n) => (n ?? 0).toLocaleString('en-US');
+const fmt = (n) => (Number(n) || 0).toLocaleString('en-US');
 
 const fetchWithRetry = async (url, retries = 2, signal) => {
   try {
@@ -93,7 +94,6 @@ const fetchWithRetry = async (url, retries = 2, signal) => {
 };
 
 export default function DashboardTab() {
-  // دالة التاريخ المحلي بدون أخطاء التوقيت العالمي UTC
   const getTodayDate = () => {
     const d = new Date();
     const year = d.getFullYear();
@@ -122,7 +122,6 @@ export default function DashboardTab() {
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState('');
 
-  // Payment Modal States
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [paymentSummary, setPaymentSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -132,7 +131,6 @@ export default function DashboardTab() {
   const abortControllerRef = useRef(null);
   const intervalRef = useRef(null);
 
-  // دالة تسجيل الخروج باستخدام التوجيه المباشر لتفادي خطأ الـ Router
   const handleLogout = async () => {
     setLogoutLoading(true);
     try {
@@ -146,7 +144,7 @@ export default function DashboardTab() {
       localStorage.clear();
       sessionStorage.clear();
       setLogoutLoading(false);
-      window.location.href = '/login'; // توجيه مباشر ومضمون
+      window.location.href = '/login';
     }
   };
 
@@ -168,25 +166,47 @@ export default function DashboardTab() {
         fetchWithRetry('/home/today-children-count', 2, controller.signal),
       ]);
 
-      setAppointmentsCount(appointmentsRes.data?.data?.today_appointments_count || 0);
-      setRevenueData(revenueRes.data?.data || {
-        total_revenue: 0,
-        clinic_net_profit: 0,
-        clinic_additions_profit: 0,
-        doctors_total_payout: 0,
-        breakdown_by_method: { online_stripe: 0, cash_reception: 0 },
-        breakdown_by_type: { fixed_appointments: 0, additions_total: 0 },
-      });
-      
-      const childrenCount = 
-        childrenRes.data?.data?.today_added_children_count || 
-        childrenRes.data?.today_added_children_count ||
+      // استخراج عدد المواعيد
+      const aptCount = 
+        appointmentsRes.data?.data?.today_appointments_count ?? 
+        appointmentsRes.data?.today_appointments_count ?? 
         0;
-      setNewChildrenCount(childrenCount);
+      setAppointmentsCount(Number(aptCount));
+
+      // استخراج البيانات المالية بالوصول لكائن financials
+      const rawData = revenueRes.data?.data || {};
+      const financials = rawData.financials || rawData;
+      const methods = rawData.breakdown_by_method || {};
+      const types = rawData.breakdown_by_type || {};
+
+      setRevenueData({
+        total_revenue: Number(financials.total_revenue ?? financials.today_revenue ?? 0),
+        clinic_net_profit: Number(financials.clinic_net_profit ?? financials.net_profit ?? 0),
+        clinic_additions_profit: Number(financials.clinic_additions_profit ?? 0),
+        doctors_total_payout: Number(financials.doctors_total_payout ?? financials.doctors_payout ?? 0),
+        breakdown_by_method: {
+          online_stripe: Number(methods.online_stripe ?? methods.online ?? 0),
+          cash_reception: Number(methods.cash_reception ?? methods.cash ?? 0),
+        },
+        breakdown_by_type: {
+          fixed_appointments: Number(types.fixed_appointments ?? types.fixed_price ?? 0),
+          additions_total: Number(types.additions_total ?? types.additions ?? 0),
+        },
+      });
+
+      // استخراج عدد الأطفال
+      const childrenCount = 
+        childrenRes.data?.today_added_children_count ?? 
+        childrenRes.data?.data?.today_added_children_count ?? 
+        0;
+      setNewChildrenCount(Number(childrenCount));
+
     } catch (err) {
       if (api.isCancel?.(err) || err.name === 'AbortError' || err.name === 'CanceledError') {
         return;
       }
+
+      console.error('Error fetching dashboard data:', err);
 
       if (err.response?.status === 500) {
         setError({ type: 'server', message: 'Server error (500). Please check Laravel logs.' });
@@ -204,7 +224,7 @@ export default function DashboardTab() {
 
     try {
       const res = await api.get(`/reception/appointments/date/${date}`);
-      
+
       const appointments = 
         res.data?.appointments || 
         res.data?.data?.appointments || 
@@ -258,7 +278,11 @@ export default function DashboardTab() {
     setActionLoadingId(appointmentId);
     try {
       await api.post(`/appointments/${appointmentId}/check-in`);
-      await fetchAppointmentsByDate(selectedDate);
+      
+      setDateAppointments(prev => 
+        prev.map(apt => apt.id === appointmentId ? { ...apt, status: 'checked_in' } : apt)
+      );
+
       await handleOpenPaymentModal(appointmentId);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to check in');
@@ -273,9 +297,13 @@ export default function DashboardTab() {
     try {
       await api.post(`/appointments/${selectedAppointmentId}/complete-payment`);
       alert('Payment has been completed successfully.');
+      
+      setDateAppointments(prev => 
+        prev.map(apt => apt.id === selectedAppointmentId ? { ...apt, status: 'completed', payment_status: 'paid' } : apt)
+      );
+
       setSelectedAppointmentId(null);
       setPaymentSummary(null);
-      fetchAppointmentsByDate(selectedDate);
       fetchDashboardData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to complete payment');
@@ -374,7 +402,6 @@ export default function DashboardTab() {
               icon={CalendarDays}
               label="Total Appointments"
               value={<AnimatedNumber value={appointmentsCount} />}
-              
               trendType="neutral"
               color="blue"
             />
@@ -382,7 +409,6 @@ export default function DashboardTab() {
               icon={Users}
               label="New Children"
               value={<AnimatedNumber value={newChildrenCount} />}
-              
               trendType="neutral"
               color="cyan"
             />
@@ -390,7 +416,6 @@ export default function DashboardTab() {
               icon={DollarSign}
               label="Today's Revenue"
               value={<AnimatedNumber value={total_revenue} prefix="$" />}
-              
               trendType="positive"
               color="purple"
             />
@@ -398,7 +423,6 @@ export default function DashboardTab() {
               icon={Wallet}
               label="Doctors Payout"
               value={<AnimatedNumber value={doctors_total_payout} prefix="$" />}
-              
               trendType="neutral"
               color="orange"
             />
@@ -450,7 +474,6 @@ export default function DashboardTab() {
             </motion.div>
           </motion.section>
 
-          {/* قائمة المواعيد */}
           <motion.section 
             className="appointments-section" 
             variants={itemVariants}
@@ -678,7 +701,6 @@ export default function DashboardTab() {
             )}
           </motion.section>
 
-          {/* زر تسجيل الخروج في نهاية الصفحة */}
           <motion.div 
             variants={itemVariants}
             style={{
@@ -719,7 +741,6 @@ export default function DashboardTab() {
         </>
       )}
 
-      {/* Modal - نافذة عرض وتأكيد الدفع */}
       <AnimatePresence>
         {selectedAppointmentId && (
           <div style={{

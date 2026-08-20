@@ -51,13 +51,11 @@ const DashboardTab = () => {
           api.get('/home/top-department'),
         ]);
 
-        // Helper function to safely extract data from Promise.allSettled results
         const getData = (res) => {
           if (res.status === 'rejected') {
             console.warn('API call rejected:', res.reason?.message || res.reason);
             return null;
           }
-          // res.value is the axios response object
           return res.value?.data ?? null;
         };
 
@@ -84,7 +82,7 @@ const DashboardTab = () => {
         });
 
       } catch (error) {
-        console.error('❌ Error fetching dashboard data:', error);
+        console.error(' Error fetching dashboard data:', error);
         setStats(prev => ({ ...prev, loading: false, error: 'Failed to load dashboard data' }));
       }
     };
@@ -111,42 +109,35 @@ const DashboardTab = () => {
   return (
     <motion.div className="dashboard-grid-content" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
 
-      {/* Quick Stats Grid */}
       <motion.section className="quick-stats-grid" variants={itemVariants}>
         <QuickStatCard 
           icon="fa-users" 
           label="Total Patients" 
           value={<AnimatedNumber value={stats.totalPatients} />} 
-          
           color="blue" 
         />
         <QuickStatCard 
           icon="fa-user-doctor" 
           label="Active Doctors" 
           value={<AnimatedNumber value={stats.presentDoctors} />} 
-           
           color="green" 
         />
         <QuickStatCard 
           icon="fa-calendar-check" 
           label="Today's Appointments" 
           value={<AnimatedNumber value={stats.appointmentsToday} />} 
-           
           color="purple" 
         />
         <QuickStatCard 
           icon="fa-bed-pulse" 
           label="Occupancy Rate" 
           value={`${stats.occupancyRate}%`} 
-         
           color="orange" 
         />
       </motion.section>
 
-      {/* Financial Overview & Performance Stats */}
       <motion.section className="dashboard-stats-wrapper" variants={containerVariants}>
 
-        {/* Financial Overview */}
         <motion.div className="stats-column" variants={itemVariants}>
           <h3 className="section-title">Financial Overview</h3>
 
@@ -169,7 +160,6 @@ const DashboardTab = () => {
           />
         </motion.div>
 
-        {/* Performance Stats */}
         <motion.div className="stats-column" variants={itemVariants}>
           <h3 className="section-title">Performance Stats</h3>
 

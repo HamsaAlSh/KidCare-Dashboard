@@ -3,28 +3,23 @@ import { X, User, Building2, Stethoscope, Calendar, Clock, CheckCircle2, Loader2
 import api from '../../../api/axios';
 
 export default function AddAppointmentModal({ onClose, onRefresh }) {
-  // Navigation Steps: 1: Child, 2: Department, 3: Doctor, 4: Date, 5: Time
   const [step, setStep] = useState(1);
 
-  // Lists Data from APIs
   const [children, setChildren] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [availabilities, setAvailabilities] = useState([]);
   const [availableTimes, setAvailableTimes] = useState([]);
 
-  // Form Selection States
   const [selectedChild, setSelectedChild] = useState(null);
   const [selectedDept, setSelectedDept] = useState(null);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
 
-  // Statuses
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Step 1: Fetch Children on Load
   useEffect(() => {
     const fetchChildren = async () => {
       try {
@@ -40,7 +35,6 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
     fetchChildren();
   }, []);
 
-  // Step 2: Select Child -> Fetch Departments
   const handleSelectChild = async (child) => {
     setSelectedChild(child);
     try {
@@ -55,7 +49,6 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
     }
   };
 
-  // Step 3: Select Department -> Fetch Doctors
   const handleSelectDept = async (dept) => {
     setSelectedDept(dept);
     try {
@@ -70,7 +63,6 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
     }
   };
 
-  // Step 4: Select Doctor -> Fetch Doctor Availability Days
   const handleSelectDoctor = async (doc) => {
     setSelectedDoctor(doc);
     try {
@@ -85,7 +77,6 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
     }
   };
 
-  // Step 5: Confirm Date & Fetch Available Times Slots
   const handleConfirmDate = async () => {
     if (!selectedDate || selectedDate.length < 10) {
       return alert('Please select a valid date.');
@@ -112,7 +103,6 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
     }
   };
 
-  // Step 6: Submit / Book Appointment
   const handleBookAppointment = async () => {
     if (!selectedTime) return alert('Please select a time slot.');
     try {
@@ -148,7 +138,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
         background: '#fff', width: '100%', maxWidth: '520px', margin: '20px',
         borderRadius: '16px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
       }}>
-        {/* Modal Header */}
+       
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {step > 1 && (
@@ -166,7 +156,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
           </button>
         </div>
 
-        {/* Selected Flow Summary */}
+        
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', fontSize: '12px' }}>
           {selectedChild && <span style={chipStyle}><User size={12} /> {selectedChild.first_name} {selectedChild.last_name}</span>}
           {selectedDept && <span style={chipStyle}><Building2 size={12} /> {selectedDept.name}</span>}
@@ -180,7 +170,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
           </div>
         ) : (
           <div>
-            {/* STEP 1: Select Child */}
+            
             {step === 1 && (
               <div>
                 <p style={{ fontWeight: 600, fontSize: '14px', marginBottom: '10px' }}>1. Select Patient (Child):</p>
@@ -205,7 +195,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
               </div>
             )}
 
-            {/* STEP 2: Select Department */}
+            
             {step === 2 && (
               <div>
                 <p style={{ fontWeight: 600, fontSize: '14px', marginBottom: '10px' }}>2. Select Department:</p>
@@ -223,7 +213,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
               </div>
             )}
 
-            {/* STEP 3: Select Doctor */}
+            
             {step === 3 && (
               <div>
                 <p style={{ fontWeight: 600, fontSize: '14px', marginBottom: '10px' }}>3. Select Doctor:</p>
@@ -241,7 +231,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
               </div>
             )}
 
-            {/* STEP 4: Select Date */}
+            
             {step === 4 && (
               <div>
                 <p style={{ fontWeight: 600, fontSize: '14px', marginBottom: '10px' }}>4. Select Date:</p>
@@ -276,7 +266,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
               </div>
             )}
 
-            {/* STEP 5: Select Time Slot & Submit */}
+            
             {step === 5 && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -332,7 +322,7 @@ export default function AddAppointmentModal({ onClose, onRefresh }) {
   );
 }
 
-// Styles
+
 const chipStyle = {
   background: '#f1f5f9', padding: '4px 8px', borderRadius: '12px',
   display: 'flex', alignItems: 'center', gap: '4px', color: '#475569'

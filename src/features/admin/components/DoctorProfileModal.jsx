@@ -6,7 +6,6 @@ import { normalizeDoctor } from "../tabs/DoctorsTab";
 const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
-  const [editFiles, setEditFiles] = useState({ profile_picture: null, cv: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -52,16 +51,15 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
       phone_number: doctor.phone_number || '',
       email: doctor.email || '',
       address: doctor.address || '',
-      experience_years: doctor.experience_years ?? '',
+      experience_years: doctor.experience_years !== undefined && doctor.experience_years !== null ? String(doctor.experience_years) : '',
+      fee: doctor.fee !== undefined && doctor.fee !== null ? String(doctor.fee) : '',
     });
-    setEditFiles({ profile_picture: null, cv: null });
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setEditData({});
-    setEditFiles({ profile_picture: null, cv: null });
   };
 
   const handleInputChange = (e) => {
@@ -72,48 +70,19 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (files && files[0]) {
-      setEditFiles(prev => ({ ...prev, [name]: files[0] }));
-    }
-  };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const formData = new FormData();
+      
+      const payload = {
+        ...editData,
+        experience_years: editData.experience_years !== '' ? Number(editData.experience_years) : null,
+        fee: editData.fee !== '' ? Number(editData.fee) : null,
+      };
 
-      const editableFields = [
-        'first_name', 'last_name', 'phone_number', 'email',
-        'address', 'experience_years'
-      ];
+      const response = await api.put(`/doctors/${doctor.id}`, payload);
 
-      editableFields.forEach(key => {
-        const value = editData[key];
-        if (value === '' || value === null || value === undefined) {
-          formData.append(key, '');
-        } else {
-          formData.append(key, value);
-        }
-      });
-
-      if (editFiles.profile_picture) {
-        formData.append('profile_picture', editFiles.profile_picture);
-      }
-      if (editFiles.cv) {
-        formData.append('cv', editFiles.cv);
-      }
-
-      formData.append('_method', 'PUT');
-
-      const response = await api.post(`/doctors/${doctor.id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data.status === 'success') {
+      if (response.data.status === 'success' || response.status === 200) {
         const updatedDoctor = response.data.data;
 
         const normalizedUpdatedDoctor = normalizeDoctor(updatedDoctor);
@@ -124,7 +93,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
         }
         alert('Doctor updated successfully!');
       } else {
-        alert( (response.data.message || 'Unknown response'));
+        alert(response.data.message || 'Unknown response');
       }
     } catch (error) {
       if (error.response) {
@@ -154,7 +123,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
 
     setIsDeleting(true);
     try {
-      const response = await api.delete(`/doctors/${doctor.id}`);
+      await api.delete(`/doctors/${doctor.id}`);
       alert('Doctor deleted successfully!');
       onDelete?.(doctor.id);
       onClose();
@@ -184,13 +153,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
           >
             <div className="doctor-profile-header">
               <div className="doctor-avatar-section">
-                {editFiles.profile_picture ? (
-                  <img
-                    src={URL.createObjectURL(editFiles.profile_picture)}
-                    alt="Preview"
-                    className="doctor-profile-img"
-                  />
-                ) : getImageUrl() ? (
+                {getImageUrl() ? (
                   <img
                     src={getImageUrl()}
                     alt={doctor.full_name}
@@ -204,7 +167,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                 ) : null}
                 <div
                   className="doctor-avatar-fallback"
-                  style={{ display: (editFiles.profile_picture || getImageUrl()) ? 'none' : 'flex' }}
+                  style={{ display: getImageUrl() ? 'none' : 'flex' }}
                 >
                   {getAvatarLetters()}
                 </div>
@@ -259,27 +222,9 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                         <label>Experience (Years)</label>
                         <input type="number" name="experience_years" value={editData.experience_years} onChange={handleInputChange} min="0" />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="profile-section">
-                    <h3><i className="fa-solid fa-folder-open"></i> Update Documents</h3>
-                    <div className="documents-grid">
-                      <div className="doc-card upload-card">
-                        <div className="doc-icon"><i className="fa-solid fa-image"></i></div>
-                        <div className="doc-info">
-                          <span className="doc-name">Profile Picture</span>
-                          <input type="file" name="profile_picture" accept="image/*" onChange={handleFileChange} className="file-input" />
-                          {editFiles.profile_picture && <span className="file-selected">{editFiles.profile_picture.name}</span>}
-                        </div>
-                      </div>
-                      <div className="doc-card upload-card">
-                        <div className="doc-icon"><i className="fa-solid fa-file-pdf"></i></div>
-                        <div className="doc-info">
-                          <span className="doc-name">CV / Resume</span>
-                          <input type="file" name="cv" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="file-input" />
-                          {editFiles.cv && <span className="file-selected">{editFiles.cv.name}</span>}
-                        </div>
+                      <div className="info-item">
+                        <label>Consultation Fee ($)</label>
+                        <input type="number" name="fee" value={editData.fee} onChange={handleInputChange} min="0" step="any" />
                       </div>
                     </div>
                   </div>

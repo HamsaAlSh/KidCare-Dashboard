@@ -21,7 +21,6 @@ const adminProfile = {
   joinDate: '2020-01-15',
   avatar: 'A',
   lastLogin: '2024-05-18 09:30 AM',
-  permissions: [],
 };
 
 const MyAccountTab = () => {
@@ -43,7 +42,6 @@ const MyAccountTab = () => {
   const [message, setMessage] = useState(null);
   const [receptionMessage, setReceptionMessage] = useState(null);
 
-  
   const handleLogout = async () => {
     try {
       await api.post('/admin/logout');  
@@ -82,8 +80,7 @@ const MyAccountTab = () => {
       formDataToSend.append('password', formData.new_password);
       formDataToSend.append('password_confirmation', formData.confirm_password);
 
-      
-      const response = await api.post('/SetAdminPassword', formDataToSend, {
+      await api.post('/SetAdminPassword', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -137,8 +134,7 @@ const MyAccountTab = () => {
       params.append('password', receptionFormData.password);
       params.append('password_confirmation', receptionFormData.password_confirmation);
 
-    
-      const response = await api.put('/admin/receptionists/1/change-password',
+      await api.put('/admin/receptionists/1/change-password',
         params,
         {
           headers: {
@@ -185,8 +181,9 @@ const MyAccountTab = () => {
           <div className="account-info">
             <h2>{adminProfile.name}</h2>
             <p className="account-role">{adminProfile.role}</p>
-            </div>
+          </div>
         </div>
+
         <div className="account-details">
           <div className="detail-group">
             <h4><i className="fa-solid fa-envelope"></i> Email</h4>
@@ -196,19 +193,9 @@ const MyAccountTab = () => {
             <h4><i className="fa-solid fa-phone"></i> Phone</h4>
             <p>{adminProfile.phone}</p>
           </div>
-          <div className="detail-group full">
-            <h4><i className="fa-solid fa-shield-halved"></i> Permissions</h4>
-            <div className="permissions-list">
-              {adminProfile.permissions.map((perm, index) => (
-                <motion.span key={index} className="permission-badge" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.1 }}>
-                  <i className="fa-solid fa-check"></i> {perm}
-                </motion.span>
-              ))}
-            </div>
-          </div>
         </div>
 
-        <div className="account-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="account-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '20px' }}>
           <motion.button 
             className="btn-secondary" 
             whileHover={{ scale: 1.03 }} 
@@ -273,7 +260,7 @@ const MyAccountTab = () => {
             <h3><i className="fa-solid fa-key"></i> Change Password</h3>
 
             {message && (
-              <div className={`alert alert-${message.type}`}>
+              <div className={`alert alert-${message.type}`} style={{ marginBottom: '15px' }}>
                 {message.text}
               </div>
             )}
@@ -336,7 +323,7 @@ const MyAccountTab = () => {
             <h3><i className="fa-solid fa-user-shield"></i> Change Reception Password</h3>
 
             {receptionMessage && (
-              <div className={`alert alert-${receptionMessage.type}`}>
+              <div className={`alert alert-${receptionMessage.type}`} style={{ marginBottom: '15px' }}>
                 {receptionMessage.text}
               </div>
             )}

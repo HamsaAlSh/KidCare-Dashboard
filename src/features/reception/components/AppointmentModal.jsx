@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit2, Trash2, Calendar, Clock, User, Stethoscope, Save, Loader2 } from 'lucide-react';
 import api from '../../../api/axios';
 
-export default function AppointmentModal({ appointmentId, onClose, onRefresh }) {
+export default function AppointmentModal({ appointmentId, onClose, onUpdated, onDeleted }) {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -17,7 +17,6 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
     status: ''
   });
 
-  // تنسيق الوقت إلى صيغة HH:mm (مثال: 09:00 بدلاً من 09:00:00)
   const formatTimeHHMM = (timeStr) => {
     if (!timeStr) return '';
     const parts = timeStr.split(':');
@@ -27,7 +26,6 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
     return timeStr;
   };
 
-  // 1. جلب البيانات (GET /api/appointments/{id})
   useEffect(() => {
     const fetchDetails = async () => {
       try {
@@ -55,7 +53,6 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
     if (appointmentId) fetchDetails();
   }, [appointmentId]);
 
-  // 2. تعديل الموعد (PUT /api/reception/appointments/{id})
   const handleUpdate = async () => {
     try {
       setSaving(true);
@@ -80,11 +77,16 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
         }
       );
 
-      if (res.data?.appointment) {
-        setDetails(res.data.appointment);
-      }
+      const updatedApt = res.data?.appointment || { id: appointmentId, ...editForm, ...details };
+
+      setDetails(updatedApt);
       setIsEditing(false);
-      onRefresh();
+
+      if (onUpdated) {
+        onUpdated(updatedApt);
+      }
+
+      onClose();
     } catch (err) {
       console.error('Error updating appointment:', err.response?.data || err);
       alert(err.response?.data?.message || 'Failed to update appointment');
@@ -93,18 +95,19 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
     }
   };
 
-  // 3. حذف / إلغاء الموعد (DELETE /api/reception/appointments/{id})
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this appointment?')) return;
     try {
       setSaving(true);
       
-      // إرسال طلب الحذف مع إمكانية تمرير كائن فارغ في حال كان الـ API يترقب body
       await api.delete(`/reception/appointments/${appointmentId}`, {
         data: {}
       });
 
-      onRefresh();
+      if (onDeleted) {
+        onDeleted(appointmentId);
+      }
+
       onClose();
     } catch (err) {
       console.error('Error deleting appointment:', err.response?.data || err);
@@ -131,7 +134,6 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
     }}>
       <div className="content-card" style={{ width: '100%', maxWidth: '480px', margin: '20px', padding: '24px', borderRadius: '16px', position: 'relative' }}>
         
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Appointment Details #{appointmentId}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
@@ -146,7 +148,7 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
         ) : details ? (
           <div>
             {!isEditing ? (
-              /* View Mode */
+              
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className={`status-badge ${getStatusClass(details.status)}`}>
@@ -176,7 +178,6 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button 
                     onClick={() => setIsEditing(true)}
@@ -194,7 +195,7 @@ export default function AppointmentModal({ appointmentId, onClose, onRefresh }) 
                 </div>
               </div>
             ) : (
-              /* Edit Mode */
+              
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '12px', color: '#64748b' }}>Child ID</label>

@@ -5,7 +5,6 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 
-// Inline animation variants (same as original)
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
@@ -17,7 +16,6 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
-// ✅ Colors for departments
 const departmentColors = {
   'Pediatrics': '#4FC3F7',
   'Dentistry': '#EF5350',
@@ -32,7 +30,6 @@ const getDepartmentColor = (name) => {
   return departmentColors[name] || '#4FC3F7';
 };
 
-// Inline DonutChart (same as original)
 const DonutChart = ({ percentage, color, label }) => (
   <div className="donut-chart-container">
     <ResponsiveContainer width={140} height={140}>
@@ -65,18 +62,17 @@ const DepartmentsTab = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch departments data
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
         const response = await api.get('/departments/daily-report');
-        console.log('📥 Departments data:', response.data);
+        console.log('Departments data:', response.data);
 
         if (response.data.status === 'success') {
           setDepartments(response.data.data || []);
         }
       } catch (err) {
-        console.error('❌ Error fetching departments:', err);
+        console.error('Error fetching departments:', err);
       } finally {
         setLoading(false);
       }
@@ -111,7 +107,6 @@ const DepartmentsTab = () => {
                 </div>
                 <div className="dept-info">
                   <h4>{dept.department_name}</h4>
-                  {/* Head removed - not in API */}
                 </div>
               </div>
               <div className="dept-stats">
