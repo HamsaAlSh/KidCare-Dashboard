@@ -88,16 +88,16 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
   const handleChildDeleted = (deletedChildId) => {
     setParent(prev => ({
       ...prev,
-      children: prev.children.filter(c => (c.id || c.child_id) !== deletedChildId)
+      children: (prev.children || []).filter(c => (c.id || c.child_id) !== deletedChildId)
     }));
     setSelectedChildId(null);
   };
 
   const getChildImage = (child) => {
-    if (child.image && !child.image.includes('girl.png') && !child.image.includes('boy.png')) {
+    if (child?.image && !child.image.includes('girl.png') && !child.image.includes('boy.png')) {
       return child.image;
     }
-    return child.gender?.toLowerCase() === 'male' 
+    return child?.gender?.toLowerCase() === 'male' 
       ? 'https://kidcare.sy/images/boy.png' 
       : 'https://kidcare.sy/images/girl.png';
   };
@@ -113,6 +113,12 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
           </h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
+
+        {error && (
+          <div style={{ color: '#ef4444', padding: '10px 15px', background: '#fef2f2', borderBottom: '1px solid #fee2e2' }}>
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="form-body text-center" style={{ padding: '40px' }}>
@@ -174,7 +180,7 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
                             key={targetId || idx} 
                             className="child-card"
                             onClick={(e) => {
-                              e.stopPropagation(); // منع انتشار النقر للأب
+                              e.stopPropagation();
                               if (targetId) {
                                 setSelectedChildId(targetId);
                               }
@@ -223,7 +229,9 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
                   <input type="text" name="address" className="form-input" value={formValues.address} onChange={handleInputChange} />
                 </div>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '15px' }}>
-                  <button type="submit" className="btn btn-primary" disabled={saving}>Save Changes</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
                   <button type="button" className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
                 </div>
               </form>
@@ -239,7 +247,6 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
         )}
       </div>
 
-      {/* مودال تفاصيل الطفل بـ zIndex مرتفع أعلى من المودال الحالي */}
       {selectedChildId && (
         <ChildDetailsModal
           isOpen={!!selectedChildId}
