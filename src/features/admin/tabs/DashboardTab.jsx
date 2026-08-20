@@ -117,28 +117,28 @@ const DashboardTab = () => {
           icon="fa-users" 
           label="Total Patients" 
           value={<AnimatedNumber value={stats.totalPatients} />} 
-          trend="+12%" 
+          
           color="blue" 
         />
         <QuickStatCard 
           icon="fa-user-doctor" 
           label="Active Doctors" 
           value={<AnimatedNumber value={stats.presentDoctors} />} 
-          trend="Present Now" 
+           
           color="green" 
         />
         <QuickStatCard 
           icon="fa-calendar-check" 
           label="Today's Appointments" 
           value={<AnimatedNumber value={stats.appointmentsToday} />} 
-          trend="On Track" 
+           
           color="purple" 
         />
         <QuickStatCard 
           icon="fa-bed-pulse" 
           label="Occupancy Rate" 
           value={`${stats.occupancyRate}%`} 
-          trend={stats.occupancyRate > 80 ? 'High' : 'Normal'} 
+         
           color="orange" 
         />
       </motion.section>

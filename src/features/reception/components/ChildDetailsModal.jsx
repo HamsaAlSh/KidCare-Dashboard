@@ -25,10 +25,9 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
     allergies: ''
   });
 
-  // دالة تنسيق التاريخ النظيف دون تحويلات Timezone
   const formatDateString = (dateStr) => {
     if (!dateStr) return 'N/A';
-    return dateStr.split('T')[0];
+    return String(dateStr).split('T')[0].split(' ')[0];
   };
 
   useEffect(() => {
@@ -135,7 +134,7 @@ export default function ChildDetailsModal({ isOpen, childId, onClose, onChildDel
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={onClose}>
+    <div className="modal-overlay" style={{ zIndex: 1300 }} onClick={onClose}>
       <div className="form-card modal-content modal-lg" onClick={e => e.stopPropagation()}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3>{child ? `${child.first_name}'s Profile` : 'Child Details'}</h3>

@@ -374,7 +374,7 @@ export default function DashboardTab() {
               icon={CalendarDays}
               label="Total Appointments"
               value={<AnimatedNumber value={appointmentsCount} />}
-              trend="Today"
+              
               trendType="neutral"
               color="blue"
             />
@@ -382,7 +382,7 @@ export default function DashboardTab() {
               icon={Users}
               label="New Children"
               value={<AnimatedNumber value={newChildrenCount} />}
-              trend="Added today"
+              
               trendType="neutral"
               color="cyan"
             />
@@ -390,7 +390,7 @@ export default function DashboardTab() {
               icon={DollarSign}
               label="Today's Revenue"
               value={<AnimatedNumber value={total_revenue} prefix="$" />}
-              trend={`Net: $${fmt(clinic_net_profit)}`}
+              
               trendType="positive"
               color="purple"
             />
@@ -398,7 +398,7 @@ export default function DashboardTab() {
               icon={Wallet}
               label="Doctors Payout"
               value={<AnimatedNumber value={doctors_total_payout} prefix="$" />}
-              trend="Total earnings"
+              
               trendType="neutral"
               color="orange"
             />

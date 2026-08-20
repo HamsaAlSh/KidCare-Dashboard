@@ -88,7 +88,7 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
   const handleChildDeleted = (deletedChildId) => {
     setParent(prev => ({
       ...prev,
-      children: prev.children.filter(c => c.id !== deletedChildId)
+      children: prev.children.filter(c => (c.id || c.child_id) !== deletedChildId)
     }));
     setSelectedChildId(null);
   };
@@ -105,7 +105,7 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" style={{ zIndex: 1000 }} onClick={onClose}>
       <div className="form-card modal-content modal-xl" onClick={e => e.stopPropagation()}>
         <div className="card-header">
           <h3 className="card-title">
@@ -132,7 +132,6 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
                   </div>
                 </div>
 
-                {/* كروت تفاصيل الوالد */}
                 <div 
                   className="profile-details-grid" 
                   style={{ 
@@ -142,58 +141,19 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
                     margin: '20px 0' 
                   }}
                 >
-                  <div 
-                    className="detail-card" 
-                    style={{ 
-                      background: 'var(--bg-primary, #f8fafc)', 
-                      border: '1px solid var(--border-color, #e2e8f0)', 
-                      borderRadius: 'var(--radius-sm, 12px)', 
-                      padding: '12px 14px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      justifyContent: 'center', 
-                      alignItems: 'flex-start', 
-                      gap: '4px' 
-                    }}
-                  >
+                  <div className="detail-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
                     <span className="detail-label" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Email</span>
-                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word', width: '100%' }}>{parent.email || 'N/A'}</div>
+                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word' }}>{parent.email || 'N/A'}</div>
                   </div>
 
-                  <div 
-                    className="detail-card" 
-                    style={{ 
-                      background: 'var(--bg-primary, #f8fafc)', 
-                      border: '1px solid var(--border-color, #e2e8f0)', 
-                      borderRadius: 'var(--radius-sm, 12px)', 
-                      padding: '12px 14px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      justifyContent: 'center', 
-                      alignItems: 'flex-start', 
-                      gap: '4px' 
-                    }}
-                  >
+                  <div className="detail-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
                     <span className="detail-label" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Phone Number</span>
-                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word', width: '100%' }}>{parent.phone_number || 'N/A'}</div>
+                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word' }}>{parent.phone_number || 'N/A'}</div>
                   </div>
 
-                  <div 
-                    className="detail-card" 
-                    style={{ 
-                      background: 'var(--bg-primary, #f8fafc)', 
-                      border: '1px solid var(--border-color, #e2e8f0)', 
-                      borderRadius: 'var(--radius-sm, 12px)', 
-                      padding: '12px 14px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      justifyContent: 'center', 
-                      alignItems: 'flex-start', 
-                      gap: '4px' 
-                    }}
-                  >
+                  <div className="detail-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
                     <span className="detail-label" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Address</span>
-                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word', width: '100%' }}>{parent.address || 'Not specified'}</div>
+                    <div className="detail-value" style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', wordBreak: 'break-word' }}>{parent.address || 'Not specified'}</div>
                   </div>
                 </div>
 
@@ -207,31 +167,39 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
 
                   {parent.children?.length > 0 ? (
                     <div className="children-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
-                      {parent.children.map((child, idx) => (
-                        <div 
-                          key={child.id || idx} 
-                          className="child-card"
-                          onClick={() => setSelectedChildId(child.id)}
-                          style={{
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '10px',
-                            padding: '12px',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: '#f8fafc'
-                          }}
-                        >
-                          <img
-                            src={getChildImage(child)}
-                            alt={child.first_name}
-                            style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px' }}
-                            onError={(e) => { e.target.src = 'https://kidcare.sy/images/girl.png'; }}
-                          />
-                          <div style={{ fontWeight: 600, fontSize: '14px' }}>{child.first_name}</div>
-                          <span style={{ fontSize: '11px', color: '#3b82f6' }}>Click to view details</span>
-                        </div>
-                      ))}
+                      {parent.children.map((child, idx) => {
+                        const targetId = child.id || child.child_id;
+                        return (
+                          <div 
+                            key={targetId || idx} 
+                            className="child-card"
+                            onClick={(e) => {
+                              e.stopPropagation(); // منع انتشار النقر للأب
+                              if (targetId) {
+                                setSelectedChildId(targetId);
+                              }
+                            }}
+                            style={{
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '10px',
+                              padding: '12px',
+                              textAlign: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              background: '#f8fafc'
+                            }}
+                          >
+                            <img
+                              src={getChildImage(child)}
+                              alt={child.first_name}
+                              style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px' }}
+                              onError={(e) => { e.target.src = 'https://kidcare.sy/images/girl.png'; }}
+                            />
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{child.first_name}</div>
+                            <span style={{ fontSize: '11px', color: '#3b82f6' }}>Click to view details</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-muted">No children registered yet</p>
@@ -271,6 +239,7 @@ export default function ParentProfileModal({ isOpen, onClose, parentId, onUpdate
         )}
       </div>
 
+      {/* مودال تفاصيل الطفل بـ zIndex مرتفع أعلى من المودال الحالي */}
       {selectedChildId && (
         <ChildDetailsModal
           isOpen={!!selectedChildId}

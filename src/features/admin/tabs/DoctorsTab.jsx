@@ -12,11 +12,10 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
-// ✅ تحسين normalizeDoctor
+// ✅ normalizeDoctor
 const normalizeDoctor = (doctor) => {
   if (!doctor) return null;
 
-  // ✅ بناء full_name
   const fullName = doctor.full_name 
     || (doctor.first_name && doctor.last_name 
         ? `${doctor.first_name} ${doctor.last_name}` 
@@ -24,22 +23,18 @@ const normalizeDoctor = (doctor) => {
     || doctor.name 
     || 'Unknown Doctor';
 
-  // ✅ استخراج القسم بشكل ذكي
   let departmentName = 'No Department';
   if (typeof doctor.department === 'object' && doctor.department !== null) {
     departmentName = doctor.department.name || 'No Department';
   } else if (typeof doctor.department === 'string') {
     departmentName = doctor.department;
   } else if (doctor.department_id) {
-    // إذا كان فقط department_id موجوداً، يمكن جلب الاسم لاحقاً
     departmentName = `Department ${doctor.department_id}`;
   }
 
-  // ✅ حساب الحالة بشكل ذكي
   let currentStatus = doctor.current_status || doctor.status;
 
   if (!currentStatus && doctor.availabilities && doctor.availabilities.length > 0) {
-    // التحقق من تواجد الطبيب اليوم
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
     const todayAvail = doctor.availabilities.find(
       a => a.day_of_week?.toLowerCase() === today.toLowerCase()
@@ -67,7 +62,6 @@ const normalizeDoctor = (doctor) => {
     }
   }
 
-  // ✅ إذا كان هناك مواعيد، نتحقق من الانشغال
   if (currentStatus === 'Available' && doctor.appointments_count > 0) {
     currentStatus = 'Busy';
   }
@@ -108,7 +102,6 @@ const DoctorsTab = ({
   handleDoctorClick 
 }) => {
 
-  // ✅ normalize كل الدكاترة قبل الفلترة
   const normalizedDoctors = (Array.isArray(doctorsData) ? doctorsData : []).map(normalizeDoctor).filter(Boolean);
 
   const filtered = doctorFilter === 'all' 
@@ -158,27 +151,39 @@ const DoctorsTab = ({
     return getInitials(doctor.full_name);
   };
 
+  // ✅ StatusBadge معدل لدعم كل الحالات والتحكم بالألوان
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      'Available': '#22c55e',
-      'Busy': '#ef4444',
-      'Out of Schedule': '#6a6a8a',
+      'Available': '#22c55e',       // أخضر
       'active': '#22c55e',
-      'on-leave': '#6a6a8a',
-      'busy': '#ef4444'
+      'available': '#22c55e',
+      'Busy': '#ef4444',            // أحمر
+      'busy': '#ef4444',
+      'Out of Schedule': '#3b82f6', // أزرق مريح للحالة خارج الدوام/غير متاح
+      'Offline': '#3b82f6',
+      'offline': '#3b82f6',
+      'on-leave': '#f59e0b',        // برتقالي للإجازات
     };
+
     const statusLabels = {
       'Available': 'Available',
-      'Busy': 'Busy',
-      'Out of Schedule': 'Offline',
       'active': 'Available',
-      'on-leave': 'Offline',
-      'busy': 'Busy'
+      'available': 'Available',
+      'Busy': 'Busy',
+      'busy': 'Busy',
+      'Out of Schedule': 'Offline',
+      'Offline': 'Offline',
+      'offline': 'Offline',
+      'on-leave': 'On Leave',
     };
+
     const safeStatus = status || 'Unknown';
+    const bg = statusColors[safeStatus] || statusColors[safeStatus.toLowerCase()] || '#3b82f6';
+    const label = statusLabels[safeStatus] || safeStatus;
+
     return (
-      <span className="status-badge" style={{ background: statusColors[safeStatus] || '#90A4AE' }}>
-        {statusLabels[safeStatus] || safeStatus}
+      <span className="status-badge" style={{ background: bg, color: '#fff', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '600' }}>
+        {label}
       </span>
     );
   };
@@ -381,6 +386,5 @@ const DoctorsTab = ({
   );
 };
 
-// ✅ تصدير normalizeDoctor لاستخدامه خارجياً
 export { normalizeDoctor };
 export default DoctorsTab;
