@@ -12,6 +12,7 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
 };
 
+// ✅ normalizeDoctor
 const normalizeDoctor = (doctor) => {
   if (!doctor) return null;
 
@@ -150,17 +151,18 @@ const DoctorsTab = ({
     return getInitials(doctor.full_name);
   };
 
+  // ✅ StatusBadge معدل لدعم كل الحالات والتحكم بالألوان
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      'Available': '#22c55e',
+      'Available': '#22c55e',       // أخضر
       'active': '#22c55e',
       'available': '#22c55e',
-      'Busy': '#ef4444',
+      'Busy': '#ef4444',            // أحمر
       'busy': '#ef4444',
-      'Out of Schedule': '#3b82f6',
+      'Out of Schedule': '#3b82f6', // أزرق مريح للحالة خارج الدوام/غير متاح
       'Offline': '#3b82f6',
       'offline': '#3b82f6',
-      'on-leave': '#f59e0b',
+      'on-leave': '#f59e0b',        // برتقالي للإجازات
     };
 
     const statusLabels = {

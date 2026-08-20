@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  LineChart, Line, Legend
+} from 'recharts';
+import logoImage from "../../../assets/logo.jpg";
 import "./AdminDashboard.css";
 import api from "../../../api/axios";
 
@@ -15,6 +22,9 @@ import MyAccountTab from "../tabs/MyAccountTab";
 import SettingsTab from "../tabs/SettingsTab";
 import SmartInsightsTab from "../tabs/SmartInsightsTab";
 
+import { normalizeDoctor } from "../tabs/DoctorsTab";
+
+
 const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'fa-house', badge: null },
   { id: 'doctors', label: 'Doctors', icon: 'fa-user-doctor', badge: null },
@@ -22,10 +32,38 @@ const sidebarItems = [
   { id: 'statistics', label: 'Statistics', icon: 'fa-chart-pie', badge: null },
   { id: 'myaccount', label: 'My Account', icon: 'fa-user', badge: null },
   { id: 'settings', label: 'Settings', icon: 'fa-gear', badge: null },
-  { id: 'insights', label: 'Smart Insights', icon: 'fa-lightbulb', badge: null },
 ];
 
+
 const initialRequests = [];
+const appointmentsData = [];
+const paymentsData = [];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } },
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0, scale: 0.95 },
+  visible: { y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 12 } },
+};
+
+const AnimatedNumber = ({ value, prefix = '', suffix = '' }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  useEffect(() => {
+    const duration = 1500, steps = 60, increment = value / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= value) { setDisplayValue(value); clearInterval(timer); }
+      else setDisplayValue(Math.floor(current));
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <span>{prefix}{displayValue.toLocaleString('en-US')}{suffix}</span>;
+};
 
 const Toast = ({ message, type, onClose }) => (
   <motion.div
@@ -63,6 +101,7 @@ const AdminDashboard = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
+  // Pagination state
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -99,6 +138,7 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    console.log(' useEffect running - fetching doctors...'); 
     fetchDoctors(1);
     fetchAllDoctors();
   }, []);
@@ -170,7 +210,7 @@ const AdminDashboard = () => {
     const requiredFields = [
       'department_id', 'first_name', 'last_name', 'address',
       'email', 'phone_number', 'experience_years', 'education',
-      'fee', 'commission_percentage', 'gender'
+      'fee', 'commission_percentage','gender'
     ];
 
     requiredFields.forEach(field => {
@@ -190,8 +230,8 @@ const AdminDashboard = () => {
       newErrors.email = 'Invalid email format';
     }
 
-    if (newDoctor.phone_number && !/^\+963\s?\d{2}\s?\d{3}\s?\d{4}$/.test(newDoctor.phone_number)) {
-      newErrors.phone_number = 'Format: +963 90 000 0000';
+    if (newDoctor.phone_number && !/^\963\s?\d{2}\s?\d{3}\s?\d{4}$/.test(newDoctor.phone_number)) {
+      newErrors.phone_number = 'Format: 963 90 000 0000';
     }
 
     if (newDoctor.experience_years && (isNaN(newDoctor.experience_years) || newDoctor.experience_years < 0)) {
@@ -284,15 +324,16 @@ const AdminDashboard = () => {
         formData.append('cv', newDoctor.cv);
       }
 
-      await api.post('/doctors', formData);
+      const response = await api.post('/doctors', formData);
 
+      console.log('Doctor added:', response.data);
       addNotification('Doctor added successfully!', 'success');
       closeModal();
       fetchDoctors(1);
-      fetchAllDoctors();
 
     } catch (error) {
       console.error('Error adding doctor:', error);
+      console.log('Response data:', error.response?.data);
 
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
@@ -322,11 +363,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDoctorUpdate = () => {
-    fetchDoctors(pagination.current_page);
-    fetchAllDoctors();
-    setShowDoctorProfile(false);
-    addNotification('Doctor updated successfully!', 'success');
+  const handleDoctorUpdate = (updatedDoctor) => {
+  
+    window.location.reload();
   };
 
   const handleDeleteDoctor = async (doctorId) => {
@@ -334,8 +373,7 @@ const AdminDashboard = () => {
       await api.delete(`/doctors/${doctorId}`);
 
       setDoctorsData(prev => prev.filter(d => d.id !== doctorId));
-      await fetchDoctors(pagination.current_page);
-      await fetchAllDoctors();
+      await fetchDoctors(1);
 
       setShowDoctorProfile(false);
       setSelectedDoctor(null);
@@ -358,6 +396,132 @@ const AdminDashboard = () => {
       gender: ''
     });
   };
+
+  const renderAppointments = () => {
+    const filtered = appointmentFilter === 'all' ? appointmentsData : appointmentsData.filter(a => a.status === appointmentFilter);
+
+    return (
+      <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
+        <motion.div className="page-header" variants={itemVariants}>
+          <div className="filter-tabs">
+            {['all', 'confirmed', 'pending', 'in-progress', 'cancelled'].map(filter => (
+              <button key={filter} className={`filter-tab ${appointmentFilter === filter ? 'active' : ''}`} onClick={() => setAppointmentFilter(filter)}>
+                {filter === 'all' ? 'All' : filter.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
+          <motion.button className="add-btn" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <i className="fa-solid fa-plus"></i> New Appointment
+          </motion.button>
+        </motion.div>
+        <motion.div className="appointments-table-wrapper" variants={itemVariants}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Patient</th><th>Doctor</th><th>Time</th><th>Type</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((apt, index) => (
+                <motion.tr key={apt.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }}>
+                  <td><div className="patient-cell"><div className="patient-avatar">{apt.patient.split(' ').map(n => n[0]).join('')}</div><span>{apt.patient} <small>({apt.age} yrs)</small></span></div></td>
+                  <td>{apt.doctor}</td>
+                  <td><span className="time-badge"><i className="fa-regular fa-clock"></i> {apt.time}</span></td>
+                  <td>{apt.type}</td>
+                  <td><span className="status-badge">{apt.status}</span></td>
+                  <td>
+                    <div className="table-actions">
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="action-btn edit"><i className="fa-solid fa-pen"></i></motion.button>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="action-btn delete"><i className="fa-solid fa-trash"></i></motion.button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
+  const renderRequests = () => (
+    <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div className="requests-page-grid" variants={itemVariants}>
+        <AnimatePresence mode="popLayout">
+          {pendingRequests.map((req, index) => (
+            <motion.div key={req.id} layout className="request-card-kidcare request-large"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -4 }}
+            >
+              <div className="request-header">
+                <span className="request-type">{req.type}</span>
+                <small className="request-date">{req.date}</small>
+              </div>
+              <div className="request-body">
+                <div className="doctor-profile">
+                  <motion.div className="doctor-avatar" whileHover={{ rotate: 360 }} transition={{ duration: 0.6 }}>{req.avatar}</motion.div>
+                  <div className="doctor-info">
+                    <p className="doctor-name">{req.doctor}</p>
+                    <small>Pediatric Specialist</small>
+                  </div>
+                </div>
+                <div className="request-actions">
+                  <motion.button className="btn-approve" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setPendingRequests(prev => prev.filter(r => r.id !== req.id)); addNotification('Doctor approved successfully!', 'success'); setNotificationCount(prev => Math.max(0, prev - 1)); }}>
+                    <i className="fa-solid fa-check"></i> Approve
+                  </motion.button>
+                  <motion.button className="btn-reject" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setPendingRequests(prev => prev.filter(r => r.id !== req.id)); addNotification('Doctor request rejected.', 'info'); setNotificationCount(prev => Math.max(0, prev - 1)); }}>
+                    <i className="fa-solid fa-xmark"></i> Reject
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        {pendingRequests.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty-state">
+            <i className="fa-solid fa-clipboard-check"></i><p>All doctor requests processed!</p>
+          </motion.div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+
+  const renderPayments = () => (
+    <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div className="payments-summary" variants={itemVariants}>
+        <div className="payment-stat-card">
+          <i className="fa-solid fa-wallet"></i>
+          <div><h4>Total Revenue</h4><p>$9,800</p></div>
+        </div>
+        <div className="payment-stat-card">
+          <i className="fa-solid fa-clock"></i>
+          <div><h4>Pending</h4><p>$1,450</p></div>
+        </div>
+        <div className="payment-stat-card">
+          <i className="fa-solid fa-check-circle"></i>
+          <div><h4>Paid</h4><p>$8,350</p></div>
+        </div>
+      </motion.div>
+      <motion.div className="payments-table-wrapper" variants={itemVariants}>
+        <table className="data-table">
+          <thead><tr><th>Invoice</th><th>Patient</th><th>Service</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+            {paymentsData.map((payment, index) => (
+              <motion.tr key={payment.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}>
+                <td><span className="invoice-badge">{payment.id}</span></td>
+                <td>{payment.patient}</td>
+                <td>{payment.service}</td>
+                <td><span className="amount">${payment.amount}</span></td>
+                <td><span className="method-badge"><i className={`fa-solid ${payment.method === 'Card' ? 'fa-credit-card' : payment.method === 'Cash' ? 'fa-money-bill' : 'fa-shield-halved'}`}></i> {payment.method}</span></td>
+                <td><span className="status-badge">{payment.status}</span></td>
+                <td>{payment.date}</td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.div>
+    </motion.div>
+  );
 
   const renderContent = () => {
     const pages = {
@@ -382,7 +546,10 @@ const AdminDashboard = () => {
         fetchDoctors={fetchDoctors}
         handleDoctorClick={handleDoctorClick}
       />,
+      appointments: renderAppointments,
       departments: () => <DepartmentsTab />, 
+      requests: renderRequests,
+      payments: renderPayments,
       statistics: () => <StatisticsTab 
         selectedDoctorId={selectedDoctorId} 
         setSelectedDoctorId={setSelectedDoctorId}
@@ -534,7 +701,7 @@ const AdminDashboard = () => {
                         key={doc.id}
                         onClick={() => {
                           setActivePage('doctors');
-                          handleDoctorClick(doc.id);
+                          setSelectedDoctorId(doc.id);
                           setShowSearchDropdown(false);
                           setSearchQuery('');
                         }}
@@ -586,7 +753,6 @@ const AdminDashboard = () => {
               <motion.button className="theme-toggle" onClick={() => setDarkMode(!darkMode)} whileHover={{ rotate: 180, scale: 1.1 }} whileTap={{ scale: 0.9 }} transition={{ duration: 0.4 }}>
                 <i className={`fa-solid ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
               </motion.button>
-
               <motion.div 
                 className="admin-avatar" 
                 whileHover={{ scale: 1.1, borderColor: '#4FC3F7' }} 
@@ -605,7 +771,7 @@ const AdminDashboard = () => {
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
 export default AdminDashboard;

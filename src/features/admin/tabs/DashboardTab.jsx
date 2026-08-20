@@ -154,7 +154,7 @@ const DashboardTab = () => {
             title="Daily Revenue" 
             value={`$${stats.dailyRevenue.toLocaleString('en-US')}`} 
             sub={`Clinic Profit: $${(stats.dailyRevenue * 0.6).toLocaleString('en-US')}`}
-            progress={60} 
+            progress={stats.dailyRevenue > 0 ? Math.min((stats.dailyRevenue / 1000) * 100, 100) : 0} 
             icon="fa-money-bill-transfer" 
             color="orange" 
           />

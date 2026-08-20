@@ -8,23 +8,24 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const [editData, setEditData] = useState({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   if (!doctor) return null;
 
-  const baseUrl = 'https://kidcare.sy';
-
   const getImageUrl = () => {
-    if (doctor.profile_picture) {
-      return `${baseUrl}/storage/${doctor.profile_picture}`;
+    if (!doctor.profile_picture) return null;
+    if (doctor.profile_picture.startsWith('http')) {
+      return doctor.profile_picture;
     }
-    return null;
+    return `https://kidcare.sy/storage/${doctor.profile_picture}`;
   };
 
   const getCvUrl = () => {
-    if (doctor.cv) {
-      return `${baseUrl}/storage/${doctor.cv}`;
+    if (!doctor.cv) return null;
+    if (doctor.cv.startsWith('http')) {
+      return doctor.cv;
     }
-    return null;
+    return `https://kidcare.sy/storage/${doctor.cv}`;
   };
 
   const getAvatarLetters = () => {
@@ -45,16 +46,30 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const formatDay = (day) => day;
 
   const startEditing = () => {
+    let phone = doctor.phone_number || '963';
+    if (phone.startsWith('09')) {
+      phone = '963' + phone.slice(1);
+    } else if (phone.startsWith('00963')) {
+      phone = phone.replace('00963', '963');
+    } else if (phone.startsWith('+963')) {
+      phone = phone.replace('+963', '963');
+    } else if (!phone.startsWith('963') && phone !== '') {
+      phone = '963' + phone;
+    }
+
     setEditData({
       first_name: doctor.first_name || '',
       last_name: doctor.last_name || '',
-      phone_number: doctor.phone_number || '',
+      phone_number: phone,
       email: doctor.email || '',
       address: doctor.address || '',
-      experience_years: doctor.experience_years !== undefined && doctor.experience_years !== null ? String(doctor.experience_years) : '',
-      fee: doctor.fee !== undefined && doctor.fee !== null ? String(doctor.fee) : '',
+      experience_years: doctor.experience_years ?? '',
+      education: doctor.education || '',
+      fee: doctor.fee ?? '',
+      commission_percentage: doctor.commission_percentage ?? '',
     });
     setIsEditing(true);
+    setImgError(false);
   };
 
   const cancelEditing = () => {
@@ -70,21 +85,49 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     }));
   };
 
+  const handlePhoneChange = (e) => {
+    let phone = e.target.value.trim();
+
+    if (phone.startsWith('09')) {
+      phone = '963' + phone.slice(1);
+    } else if (phone.startsWith('00963')) {
+      phone = phone.replace('00963', '963');
+    } else if (phone.startsWith('+963')) {
+      phone = phone.replace('+963', '963');
+    } else if (!phone.startsWith('963') && phone !== '') {
+      phone = '963' + phone;
+    }
+
+    setEditData(prev => ({
+      ...prev,
+      phone_number: phone
+    }));
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      
-      const payload = {
-        ...editData,
-        experience_years: editData.experience_years !== '' ? Number(editData.experience_years) : null,
-        fee: editData.fee !== '' ? Number(editData.fee) : null,
-      };
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
 
-      const response = await api.put(`/doctors/${doctor.id}`, payload);
+      formData.append('first_name', editData.first_name || '');
+      formData.append('last_name', editData.last_name || '');
+      formData.append('phone_number', editData.phone_number || '');
+      formData.append('email', editData.email || '');
+      formData.append('address', editData.address || '');
+      formData.append('experience_years', editData.experience_years ?? '');
+      formData.append('education', editData.education || '');
+      formData.append('fee', editData.fee ?? '');
+      formData.append('commission_percentage', editData.commission_percentage ?? '');
 
-      if (response.data.status === 'success' || response.status === 200) {
+      const response = await api.post(`/doctors/${doctor.id}/update`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.status === 'success') {
         const updatedDoctor = response.data.data;
-
         const normalizedUpdatedDoctor = normalizeDoctor(updatedDoctor);
 
         setIsEditing(false);
@@ -93,7 +136,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
         }
         alert('Doctor updated successfully!');
       } else {
-        alert(response.data.message || 'Unknown response');
+        alert((response.data.message || 'Unknown response'));
       }
     } catch (error) {
       if (error.response) {
@@ -133,6 +176,9 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     }
   };
 
+  const imageUrl = getImageUrl();
+  const showImage = imageUrl && !imgError;
+
   return (
     <AnimatePresence>
       {show && (
@@ -153,21 +199,17 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
           >
             <div className="doctor-profile-header">
               <div className="doctor-avatar-section">
-                {getImageUrl() ? (
+                {showImage ? (
                   <img
-                    src={getImageUrl()}
+                    src={imageUrl}
                     alt={doctor.full_name}
                     className="doctor-profile-img"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      const fallback = e.target.parentElement?.querySelector('.doctor-avatar-fallback');
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
+                    onError={() => setImgError(true)}
                   />
                 ) : null}
                 <div
                   className="doctor-avatar-fallback"
-                  style={{ display: getImageUrl() ? 'none' : 'flex' }}
+                  style={{ display: showImage ? 'none' : 'flex' }}
                 >
                   {getAvatarLetters()}
                 </div>
@@ -202,7 +244,14 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                       </div>
                       <div className="info-item">
                         <label>Phone *</label>
-                        <input type="text" name="phone_number" value={editData.phone_number} onChange={handleInputChange} required />
+                        <input 
+                          type="tel" 
+                          name="phone_number" 
+                          value={editData.phone_number} 
+                          onChange={handlePhoneChange} 
+                          placeholder="963xxxxxxxx" 
+                          required 
+                        />
                       </div>
                       <div className="info-item">
                         <label>Email</label>
@@ -223,8 +272,16 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                         <input type="number" name="experience_years" value={editData.experience_years} onChange={handleInputChange} min="0" />
                       </div>
                       <div className="info-item">
-                        <label>Consultation Fee ($)</label>
-                        <input type="number" name="fee" value={editData.fee} onChange={handleInputChange} min="0" step="any" />
+                        <label>Education</label>
+                        <input type="text" name="education" value={editData.education} onChange={handleInputChange} />
+                      </div>
+                      <div className="info-item">
+                        <label>Consultation Fee</label>
+                        <input type="number" name="fee" value={editData.fee} onChange={handleInputChange} min="0" step="0.01" />
+                      </div>
+                      <div className="info-item">
+                        <label>Commission (%)</label>
+                        <input type="number" name="commission_percentage" value={editData.commission_percentage} onChange={handleInputChange} min="0" max="100" />
                       </div>
                     </div>
                   </div>

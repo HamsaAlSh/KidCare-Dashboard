@@ -1,5 +1,4 @@
 import React from 'react';
-
 const ParentCard = ({ parent, onClick }) => {
   const fullName = `${parent.first_name || ''} ${parent.last_name || ''}`.trim() || 'No Name';
 
