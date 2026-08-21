@@ -334,9 +334,11 @@ export default function DashboardTab() {
   }, [breakdown_by_method]);
 
   const getChildImage = (patient) => {
-    if (patient?.image && !patient.image.includes('girl.png') && !patient.image.includes('boy.png')) {
-      return patient.image;
+   
+    if (patient?.child_image) {
+      return patient.child_image;
     }
+    
     return patient?.gender === 'male' 
       ? 'https://kidcare.sy/images/boy.png' 
       : 'https://kidcare.sy/images/girl.png';

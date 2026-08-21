@@ -55,16 +55,17 @@ export function AuthProvider({ children }) {
       : 'https://kidcare.sy/api/loginReceptionist';
 
     try {
+      const params = new URLSearchParams();
+      params.append('phone_number', phoneNumber);
+      params.append('password', password);
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-          password: password
-        })
+        body: params.toString()
       });
 
       const data = await response.json();
@@ -74,7 +75,7 @@ export function AuthProvider({ children }) {
           ...data.user,
           role: role
         };
-        
+
         if (role === 'admin') {
           sessionStorage.setItem('admin_token', data.Token);
           sessionStorage.setItem('admin_user', JSON.stringify(userWithRole));
@@ -82,7 +83,7 @@ export function AuthProvider({ children }) {
           sessionStorage.setItem('reception_token', data.Token);
           sessionStorage.setItem('reception_user', JSON.stringify(userWithRole));
         }
-        
+
         setUser(userWithRole);
         return { success: true };
       } else {
@@ -107,6 +108,7 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 export const useAuth = () => useContext(AuthContext);
 `
 
@@ -115,16 +117,6 @@ export const useAuth = () => useContext(AuthContext);
 `javascript
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const getInitialDoctors = () => {
-  const saved = localStorage.getItem('kidcare_doctors');
-  return saved ? JSON.parse(saved) : [];
-};
-
-const saveDoctors = (doctors) => {
-  localStorage.setItem('kidcare_doctors', JSON.stringify(doctors));
-};
-
 
 const departmentsData = [
   { id: 1, name: 'Pediatrics' },
@@ -141,296 +133,383 @@ const AddDoctorModal = ({
   handleFileChange,
   handleSubmitDoctor,
   closeModal
-}) => (
-  <AnimatePresence>
-    {showAddDoctorModal && (
-      <motion.div 
-        className="modal-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={closeModal}
-      >
-        <motion.div 
-          className="modal-content"
-          initial={{ scale: 0.8, y: 50, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          exit={{ scale: 0.8, y: 50, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          onClick={e => e.stopPropagation()}
+}) => {
+  const handlePhoneChange = (e) => {
+    let phone = e.target.value.trim();
+
+    if (phone.startsWith('09')) {
+      phone = '963' + phone.slice(1);
+    } else if (phone.startsWith('00963')) {
+      phone = phone.replace('00963', '963');
+    } else if (phone.startsWith('+963')) {
+      phone = phone.replace('+963', '963');
+    } else if (!phone.startsWith('963') && phone !== '') {
+      phone = '963' + phone;
+    }
+
+    handleInputChange({
+      target: {
+        name: 'phone_number',
+        value: phone
+      }
+    });
+  };
+
+  return (
+    <AnimatePresence>
+      {showAddDoctorModal && (
+        <motion.div
+          className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={closeModal}
         >
-          <div className="modal-header">
-            <div className="modal-icon">
-              <i className="fa-solid fa-user-doctor"></i>
+          <motion.div
+            className="modal-content"
+            initial={{ scale: 0.8, y: 50, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.8, y: 50, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div className="modal-icon">
+                <i className="fa-solid fa-user-doctor"></i>
+              </div>
+              <div>
+                <h2>Add New Doctor</h2>
+                <p>Fill in the doctor's information below</p>
+              </div>
+              <button className="modal-close" onClick={closeModal}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
             </div>
-            <div>
-              <h2>Add New Doctor</h2>
-              <p>Fill in the doctor's information below</p>
-            </div>
-            <button className="modal-close" onClick={closeModal}>
-              <i className="fa-solid fa-xmark"></i>
-            </button>
-          </div>
 
-          <form onSubmit={handleSubmitDoctor}>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>
-                  Department <span className="required">*</span>
-                </label>
-                <select
-                  name="department_id"
-                  value={newDoctor.department_id}
-                  onChange={handleInputChange}
-                  className={errors.department_id ? 'error' : ''}
+            <form onSubmit={handleSubmitDoctor}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>
+                    Department <span className="required">*</span>
+                  </label>
+                  <select
+                    name="department_id"
+                    value={newDoctor.department_id}
+                    onChange={handleInputChange}
+                    className={errors.department_id ? 'error' : ''}
+                  >
+                    <option value="">Select Department</option>
+                    {departmentsData.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                  {errors.department_id && <span className="error-text">{errors.department_id}</span>}
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>First Name <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      name="first_name"
+                      value={newDoctor.first_name}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Sarah"
+                      className={errors.first_name ? 'error' : ''}
+                    />
+                    {errors.first_name && <span className="error-text">{errors.first_name}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label>Last Name <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      name="last_name"
+                      value={newDoctor.last_name}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Ahmed"
+                      className={errors.last_name ? 'error' : ''}
+                    />
+                    {errors.last_name && <span className="error-text">{errors.last_name}</span>}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Gender <span className="required">*</span></label>
+                  <select
+                    name="gender"
+                    value={newDoctor.gender}
+                    onChange={handleInputChange}
+                    className={errors.gender ? 'error' : ''}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                  {errors.gender && <span className="error-text">{errors.gender}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label>Address <span className="required">*</span></label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={newDoctor.address}
+                    onChange={handleInputChange}
+                    placeholder="Full address"
+                    className={errors.address ? 'error' : ''}
+                  />
+                  {errors.address && <span className="error-text">{errors.address}</span>}
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Email <span className="required">*</span></label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={newDoctor.email}
+                      onChange={handleInputChange}
+                      placeholder="doctor@kidcare.com"
+                      className={errors.email ? 'error' : ''}
+                    />
+                    {errors.email && <span className="error-text">{errors.email}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label>Phone Number <span className="required">*</span></label>
+                    <input
+                      type="tel"
+                      name="phone_number"
+                      value={newDoctor.phone_number || '963'}
+                      onChange={handlePhoneChange}
+                      placeholder="963xxxxxxxx"
+                      className={errors.phone_number ? 'error' : ''}
+                    />
+                    {errors.phone_number && <span className="error-text">{errors.phone_number}</span>}
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Experience (Years) <span className="required">*</span></label>
+                    <input
+                      type="number"
+                      name="experience_years"
+                      value={newDoctor.experience_years}
+                      onChange={handleInputChange}
+                      placeholder="10"
+                      min="0"
+                      className={errors.experience_years ? 'error' : ''}
+                    />
+                    {errors.experience_years && <span className="error-text">{errors.experience_years}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label>Education <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      name="education"
+                      value={newDoctor.education}
+                      onChange={handleInputChange}
+                      placeholder="e.g. MD, Harvard Medical School"
+                      className={errors.education ? 'error' : ''}
+                    />
+                    {errors.education && <span className="error-text">{errors.education}</span>}
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Consultation Fee ($) <span className="required">*</span></label>
+                    <input
+                      type="number"
+                      name="fee"
+                      value={newDoctor.fee}
+                      onChange={handleInputChange}
+                      placeholder="450"
+                      min="0"
+                      step="0.01"
+                      className={errors.fee ? 'error' : ''}
+                    />
+                    {errors.fee && <span className="error-text">{errors.fee}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label>Commission (%) <span className="required">*</span></label>
+                    <input
+                      type="number"
+                      name="commission_percentage"
+                      value={newDoctor.commission_percentage}
+                      onChange={handleInputChange}
+                      placeholder="15"
+                      min="0"
+                      max="100"
+                      className={errors.commission_percentage ? 'error' : ''}
+                    />
+                    {errors.commission_percentage && <span className="error-text">{errors.commission_percentage}</span>}
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group file-group">
+                    <label>
+                      <i className="fa-solid fa-camera"></i> Profile Picture
+                      <span className="optional">(Optional)</span>
+                    </label>
+                    <div className="file-input-wrapper">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg"
+                        onChange={(e) => handleFileChange(e, 'profile_picture')}
+                        id="profile-picture"
+                        hidden
+                      />
+                      <label htmlFor="profile-picture" className="file-label">
+                        <i className="fa-solid fa-cloud-arrow-up"></i>
+                        <span>{newDoctor.profile_picture ? newDoctor.profile_picture.name : 'Upload Photo'}</span>
+                      </label>
+                      {newDoctor.profile_picture && (
+                        <button
+                          type="button"
+                          className="file-clear"
+                          onClick={() => handleInputChange({ target: { name: 'profile_picture', value: null, type: 'file' } })}
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      )}
+                    </div>
+                    {errors.profile_picture && <span className="error-text">{errors.profile_picture}</span>}
+                    <small className="file-hint">JPG, PNG â€¢ Max 5MB</small>
+                  </div>
+
+                  <div className="form-group file-group">
+                    <label>
+                      <i className="fa-solid fa-file-pdf"></i> CV / Resume
+                      <span className="optional">(Optional)</span>
+                    </label>
+                    <div className="file-input-wrapper">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => handleFileChange(e, 'cv')}
+                        id="cv-file"
+                        hidden
+                      />
+                      <label htmlFor="cv-file" className="file-label">
+                        <i className="fa-solid fa-cloud-arrow-up"></i>
+                        <span>{newDoctor.cv ? newDoctor.cv.name : 'Upload CV'}</span>
+                      </label>
+                      {newDoctor.cv && (
+                        <button
+                          type="button"
+                          className="file-clear"
+                          onClick={() => handleInputChange({ target: { name: 'cv', value: null, type: 'file' } })}
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      )}
+                    </div>
+                    {errors.cv && <span className="error-text">{errors.cv}</span>}
+                    <small className="file-hint">PDF, DOC â€¢ Max 5MB</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn-cancel" onClick={closeModal}>
+                  Cancel
+                </button>
+                <motion.button
+                  type="submit"
+                  className="btn-submit"
+                  disabled={isSubmitting}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <option value="">Select Department</option>
-                  {departmentsData.map(dept => (
-                    <option key={dept.id} value={dept.id}>{dept.name}</option>
-                  ))}
-                </select>
-                {errors.department_id && <span className="error-text">{errors.department_id}</span>}
+                  {isSubmitting ? (
+                    <>
+                      <i className="fa-solid fa-circle-notch fa-spin"></i>
+                      Adding Doctor...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-check"></i>
+                      Add Doctor
+                    </>
+                  )}
+                </motion.button>
               </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>First Name <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={newDoctor.first_name}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Sarah"
-                    className={errors.first_name ? 'error' : ''}
-                  />
-                  {errors.first_name && <span className="error-text">{errors.first_name}</span>}
-                </div>
-                <div className="form-group">
-                  <label>Last Name <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={newDoctor.last_name}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Ahmed"
-                    className={errors.last_name ? 'error' : ''}
-                  />
-                  {errors.last_name && <span className="error-text">{errors.last_name}</span>}
-                </div>
-              </div>
+const GeneratedPasswordModal = ({ show, password, onClose }) => {
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(password);
+  };
 
-               <div className="form-group">
-  <label>Gender <span className="required">*</span></label>
-  <select
-    name="gender"
-    value={newDoctor.gender}
-    onChange={handleInputChange}
-    className={errors.gender ? 'error' : ''}
-  >
-    <option value="">Select Gender</option>
-    <option value="male">Male</option>
-    <option value="female">Female</option>
-  </select>
-  {errors.gender && <span className="error-text">{errors.gender}</span>}
-</div>
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="modal-content password-modal"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+          >
+            <div className="modal-header">
+              <h2>Doctor Account Created</h2>
+              <p>Temporary password â€” save it now, it will not be shown again</p>
+            </div>
 
-              <div className="form-group">
-                <label>Address <span className="required">*</span></label>
-                <input
-                  type="text"
-                  name="address"
-                  value={newDoctor.address}
-                  onChange={handleInputChange}
-                  placeholder="Full address"
-                  className={errors.address ? 'error' : ''}
-                />
-                {errors.address && <span className="error-text">{errors.address}</span>}
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Email <span className="required">*</span></label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={newDoctor.email}
-                    onChange={handleInputChange}
-                    placeholder="doctor@kidcare.com"
-                    className={errors.email ? 'error' : ''}
-                  />
-                  {errors.email && <span className="error-text">{errors.email}</span>}
-                </div>
-                <div className="form-group">
-                  <label>Phone Number <span className="required">*</span></label>
-                  <input
-                    type="tel"
-                    name="phone_number"
-                    value={newDoctor.phone_number}
-                    onChange={handleInputChange}
-                    placeholder="+966 50 123 4567"
-                    className={errors.phone_number ? 'error' : ''}
-                  />
-                  {errors.phone_number && <span className="error-text">{errors.phone_number}</span>}
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Experience (Years) <span className="required">*</span></label>
-                  <input
-                    type="number"
-                    name="experience_years"
-                    value={newDoctor.experience_years}
-                    onChange={handleInputChange}
-                    placeholder="10"
-                    min="0"
-                    className={errors.experience_years ? 'error' : ''}
-                  />
-                  {errors.experience_years && <span className="error-text">{errors.experience_years}</span>}
-                </div>
-                <div className="form-group">
-                  <label>Education <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    name="education"
-                    value={newDoctor.education}
-                    onChange={handleInputChange}
-                    placeholder="e.g. MD, Harvard Medical School"
-                    className={errors.education ? 'error' : ''}
-                  />
-                  {errors.education && <span className="error-text">{errors.education}</span>}
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Consultation Fee ($) <span className="required">*</span></label>
-                  <input
-                    type="number"
-                    name="fee"
-                    value={newDoctor.fee}
-                    onChange={handleInputChange}
-                    placeholder="450"
-                    min="0"
-                    step="0.01"
-                    className={errors.fee ? 'error' : ''}
-                  />
-                  {errors.fee && <span className="error-text">{errors.fee}</span>}
-                </div>
-                <div className="form-group">
-                  <label>Commission (%) <span className="required">*</span></label>
-                  <input
-                    type="number"
-                    name="commission_percentage"
-                    value={newDoctor.commission_percentage}
-                    onChange={handleInputChange}
-                    placeholder="15"
-                    min="0"
-                    max="100"
-                    className={errors.commission_percentage ? 'error' : ''}
-                  />
-                  {errors.commission_percentage && <span className="error-text">{errors.commission_percentage}</span>}
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group file-group">
-                  <label>
-                    <i className="fa-solid fa-camera"></i> Profile Picture
-                    <span className="optional">(Optional)</span>
-                  </label>
-                  <div className="file-input-wrapper">
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/jpg"
-                      onChange={(e) => handleFileChange(e, 'profile_picture')}
-                      id="profile-picture"
-                      hidden
-                    />
-                    <label htmlFor="profile-picture" className="file-label">
-                      <i className="fa-solid fa-cloud-arrow-up"></i>
-                      <span>{newDoctor.profile_picture ? newDoctor.profile_picture.name : 'Upload Photo'}</span>
-                    </label>
-                    {newDoctor.profile_picture && (
-                      <button 
-                        type="button" 
-                        className="file-clear"
-                        onClick={() => handleInputChange({ target: { name: 'profile_picture', value: null, type: 'file' } })}
-                      >
-                        <i className="fa-solid fa-xmark"></i>
-                      </button>
-                    )}
-                  </div>
-                  {errors.profile_picture && <span className="error-text">{errors.profile_picture}</span>}
-                  <small className="file-hint">JPG, PNG â€¢ Max 5MB</small>
-                </div>
-
-                <div className="form-group file-group">
-                  <label>
-                    <i className="fa-solid fa-file-pdf"></i> CV / Resume
-                    <span className="optional">(Optional)</span>
-                  </label>
-                  <div className="file-input-wrapper">
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={(e) => handleFileChange(e, 'cv')}
-                      id="cv-file"
-                      hidden
-                    />
-                    <label htmlFor="cv-file" className="file-label">
-                      <i className="fa-solid fa-cloud-arrow-up"></i>
-                      <span>{newDoctor.cv ? newDoctor.cv.name : 'Upload CV'}</span>
-                    </label>
-                    {newDoctor.cv && (
-                      <button 
-                        type="button" 
-                        className="file-clear"
-                        onClick={() => handleInputChange({ target: { name: 'cv', value: null, type: 'file' } })}
-                      >
-                        <i className="fa-solid fa-xmark"></i>
-                      </button>
-                    )}
-                  </div>
-                  {errors.cv && <span className="error-text">{errors.cv}</span>}
-                  <small className="file-hint">PDF, DOC â€¢ Max 5MB</small>
-                </div>
+            <div className="modal-body">
+              <div className="password-display">
+                <code>{password}</code>
+                <button type="button" onClick={copyToClipboard}>
+                  <i className="fa-solid fa-copy"></i> Copy
+                </button>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button type="button" className="btn-cancel" onClick={closeModal}>
-                Cancel
+              <button type="button" className="btn-submit" onClick={onClose}>
+                Got it, Close
               </button>
-              <motion.button 
-                type="submit" 
-                className="btn-submit"
-                disabled={isSubmitting}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <i className="fa-solid fa-circle-notch fa-spin"></i>
-                    Adding Doctor...
-                  </>
-                ) : (
-                  <>
-                    <i className="fa-solid fa-check"></i>
-                    Add Doctor
-                  </>
-                )}
-              </motion.button>
             </div>
-          </form>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
+      )}
+    </AnimatePresence>
+  );
+};
+
+const buildDoctorFormData = (newDoctor) => {
+  const formData = new FormData();
+  formData.append('first_name', newDoctor.first_name);
+  formData.append('last_name', newDoctor.last_name);
+  formData.append('email', newDoctor.email);
+  formData.append('phone_number', newDoctor.phone_number);
+  formData.append('address', newDoctor.address);
+  formData.append('experience_years', newDoctor.experience_years);
+  formData.append('education', newDoctor.education);
+  formData.append('department_id', newDoctor.department_id);
+  formData.append('fee', newDoctor.fee);
+  formData.append('commission_percentage', newDoctor.commission_percentage);
+  formData.append('gender', newDoctor.gender);
+  if (newDoctor.profile_picture) formData.append('profile_picture', newDoctor.profile_picture);
+  if (newDoctor.cv) formData.append('cv', newDoctor.cv);
+  return formData;
+};
 
 export default AddDoctorModal;
-export { getInitialDoctors, saveDoctors };
+export { GeneratedPasswordModal, buildDoctorFormData };
 `
 
 ## D:\my-first-app\src\features\admin\components\DoctorProfileModal.jsx
@@ -444,26 +523,26 @@ import { normalizeDoctor } from "../tabs/DoctorsTab";
 const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
-  const [editFiles, setEditFiles] = useState({ profile_picture: null, cv: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   if (!doctor) return null;
 
-  const baseUrl = 'https://kidcare.sy';
-
   const getImageUrl = () => {
-    if (doctor.profile_picture) {
-      return `${baseUrl}/storage/${doctor.profile_picture}`;
+    if (!doctor.profile_picture) return null;
+    if (doctor.profile_picture.startsWith('http')) {
+      return doctor.profile_picture;
     }
-    return null;
+    return `https://kidcare.sy/${doctor.profile_picture}`;
   };
 
   const getCvUrl = () => {
-    if (doctor.cv) {
-      return `${baseUrl}/storage/${doctor.cv}`;
+    if (!doctor.cv) return null;
+    if (doctor.cv.startsWith('http')) {
+      return doctor.cv;
     }
-    return null;
+    return `https://kidcare.sy/${doctor.cv}`;
   };
 
   const getAvatarLetters = () => {
@@ -484,22 +563,35 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   const formatDay = (day) => day;
 
   const startEditing = () => {
+    let phone = doctor.phone_number || '963';
+    if (phone.startsWith('09')) {
+      phone = '963' + phone.slice(1);
+    } else if (phone.startsWith('00963')) {
+      phone = phone.replace('00963', '963');
+    } else if (phone.startsWith('+963')) {
+      phone = phone.replace('+963', '963');
+    } else if (!phone.startsWith('963') && phone !== '') {
+      phone = '963' + phone;
+    }
+
     setEditData({
       first_name: doctor.first_name || '',
       last_name: doctor.last_name || '',
-      phone_number: doctor.phone_number || '',
+      phone_number: phone,
       email: doctor.email || '',
       address: doctor.address || '',
       experience_years: doctor.experience_years ?? '',
+      education: doctor.education || '',
+      fee: doctor.fee ?? '',
+      commission_percentage: doctor.commission_percentage ?? '',
     });
-    setEditFiles({ profile_picture: null, cv: null });
     setIsEditing(true);
+    setImgError(false);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setEditData({});
-    setEditFiles({ profile_picture: null, cv: null });
   };
 
   const handleInputChange = (e) => {
@@ -510,49 +602,51 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (files && files[0]) {
-      setEditFiles(prev => ({ ...prev, [name]: files[0] }));
+  const handlePhoneChange = (e) => {
+    let phone = e.target.value.trim();
+
+    if (phone.startsWith('09')) {
+      phone = '963' + phone.slice(1);
+    } else if (phone.startsWith('00963')) {
+      phone = phone.replace('00963', '963');
+    } else if (phone.startsWith('+963')) {
+      phone = phone.replace('+963', '963');
+    } else if (!phone.startsWith('963') && phone !== '') {
+      phone = '963' + phone;
     }
+
+    setEditData(prev => ({
+      ...prev,
+      phone_number: phone
+    }));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const formData = new FormData();
+      const params = new URLSearchParams();
+      params.append('first_name', editData.first_name || '');
+      params.append('last_name', editData.last_name || '');
+      params.append('phone_number', editData.phone_number || '');
+      params.append('email', editData.email || '');
+      params.append('address', editData.address || '');
+      params.append('experience_years', editData.experience_years ?? '');
+      params.append('education', editData.education || '');
+      params.append('fee', editData.fee ?? '');
+      params.append('commission_percentage', editData.commission_percentage ?? '');
 
-      const editableFields = [
-        'first_name', 'last_name', 'phone_number', 'email',
-        'address', 'experience_years'
-      ];
-
-      editableFields.forEach(key => {
-        const value = editData[key];
-        if (value === '' || value === null || value === undefined) {
-          formData.append(key, '');
-        } else {
-          formData.append(key, value);
-        }
-      });
-
-      if (editFiles.profile_picture) {
-        formData.append('profile_picture', editFiles.profile_picture);
-      }
-      if (editFiles.cv) {
-        formData.append('cv', editFiles.cv);
-      }
-
-      formData.append('_method', 'PUT');
-
-      const response = await api.post(`/doctors/${doctor.id}`, formData, {
+      const response = await api.put(`/doctors/${doctor.id}/update`, params, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
 
       if (response.data.status === 'success') {
-        const updatedDoctor = response.data.data;
+        let updatedDoctor = response.data.data;
+
+        if (!updatedDoctor.department && doctor.department) {
+          updatedDoctor.department = doctor.department;
+        }
 
         const normalizedUpdatedDoctor = normalizeDoctor(updatedDoctor);
 
@@ -560,9 +654,9 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
         if (onUpdate && normalizedUpdatedDoctor) {
           onUpdate(normalizedUpdatedDoctor);
         }
-        alert('Doctor updated successfully!');
+        onClose();
       } else {
-        alert( (response.data.message || 'Unknown response'));
+        alert((response.data.message || 'Unknown response'));
       }
     } catch (error) {
       if (error.response) {
@@ -586,21 +680,22 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete Dr. ' + doctor.full_name + '?')) {
-      return;
-    }
+  if (!window.confirm('Are you sure you want to delete Dr. ' + doctor.full_name + '?')) {
+    return;
+  }
 
-    setIsDeleting(true);
-    try {
-      const response = await api.delete(`/doctors/${doctor.id}`);
-      alert('Doctor deleted successfully!');
-      onDelete?.(doctor.id);
-      onClose();
-    } catch (error) {
-      alert('Error: ' + (error.response?.data?.message || error.message));
-      setIsDeleting(false);
-    }
-  };
+  setIsDeleting(true);
+  try {
+    await onDelete?.(doctor.id);
+    onClose();
+  } catch (error) {
+    alert('Error: ' + (error.response?.data?.message || error.message));
+  } finally {
+    setIsDeleting(false);
+  }
+};
+  const imageUrl = getImageUrl();
+  const showImage = imageUrl && !imgError;
 
   return (
     <AnimatePresence>
@@ -622,27 +717,17 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
           >
             <div className="doctor-profile-header">
               <div className="doctor-avatar-section">
-                {editFiles.profile_picture ? (
+                {showImage ? (
                   <img
-                    src={URL.createObjectURL(editFiles.profile_picture)}
-                    alt="Preview"
-                    className="doctor-profile-img"
-                  />
-                ) : getImageUrl() ? (
-                  <img
-                    src={getImageUrl()}
+                    src={imageUrl}
                     alt={doctor.full_name}
                     className="doctor-profile-img"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      const fallback = e.target.parentElement?.querySelector('.doctor-avatar-fallback');
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
+                    onError={() => setImgError(true)}
                   />
                 ) : null}
                 <div
                   className="doctor-avatar-fallback"
-                  style={{ display: (editFiles.profile_picture || getImageUrl()) ? 'none' : 'flex' }}
+                  style={{ display: showImage ? 'none' : 'flex' }}
                 >
                   {getAvatarLetters()}
                 </div>
@@ -677,7 +762,14 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                       </div>
                       <div className="info-item">
                         <label>Phone *</label>
-                        <input type="text" name="phone_number" value={editData.phone_number} onChange={handleInputChange} required />
+                        <input 
+                          type="tel" 
+                          name="phone_number" 
+                          value={editData.phone_number} 
+                          onChange={handlePhoneChange} 
+                          placeholder="963xxxxxxxx" 
+                          required 
+                        />
                       </div>
                       <div className="info-item">
                         <label>Email</label>
@@ -697,27 +789,17 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
                         <label>Experience (Years)</label>
                         <input type="number" name="experience_years" value={editData.experience_years} onChange={handleInputChange} min="0" />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="profile-section">
-                    <h3><i className="fa-solid fa-folder-open"></i> Update Documents</h3>
-                    <div className="documents-grid">
-                      <div className="doc-card upload-card">
-                        <div className="doc-icon"><i className="fa-solid fa-image"></i></div>
-                        <div className="doc-info">
-                          <span className="doc-name">Profile Picture</span>
-                          <input type="file" name="profile_picture" accept="image/*" onChange={handleFileChange} className="file-input" />
-                          {editFiles.profile_picture && <span className="file-selected">{editFiles.profile_picture.name}</span>}
-                        </div>
+                      <div className="info-item">
+                        <label>Education</label>
+                        <input type="text" name="education" value={editData.education} onChange={handleInputChange} />
                       </div>
-                      <div className="doc-card upload-card">
-                        <div className="doc-icon"><i className="fa-solid fa-file-pdf"></i></div>
-                        <div className="doc-info">
-                          <span className="doc-name">CV / Resume</span>
-                          <input type="file" name="cv" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="file-input" />
-                          {editFiles.cv && <span className="file-selected">{editFiles.cv.name}</span>}
-                        </div>
+                      <div className="info-item">
+                        <label>Consultation Fee</label>
+                        <input type="number" name="fee" value={editData.fee} onChange={handleInputChange} min="0" step="0.01" />
+                      </div>
+                      <div className="info-item">
+                        <label>Commission (%)</label>
+                        <input type="number" name="commission_percentage" value={editData.commission_percentage} onChange={handleInputChange} min="0" max="100" />
                       </div>
                     </div>
                   </div>
@@ -1616,7 +1698,6 @@ const AdminDashboard = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  // Pagination state
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -1714,11 +1795,13 @@ const AdminDashboard = () => {
     fetchDepartments();
   }, []);
 
-  const addNotification = useCallback((message, type = 'success') => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
-  }, []);
+  const addNotification = useCallback((message, type = 'success', duration = 4000) => {
+  const id = Date.now();
+  setNotifications(prev => [...prev, { id, message, type }]);
+  if (duration > 0) {
+    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), duration);
+  }
+}, []);
 
   const validateDoctorForm = () => {
     const newErrors = {};
@@ -1745,8 +1828,8 @@ const AdminDashboard = () => {
       newErrors.email = 'Invalid email format';
     }
 
-    if (newDoctor.phone_number && !/^\+963\s?\d{2}\s?\d{3}\s?\d{4}$/.test(newDoctor.phone_number)) {
-      newErrors.phone_number = 'Format: +963 90 000 0000';
+    if (newDoctor.phone_number && !/^\963\s?\d{2}\s?\d{3}\s?\d{4}$/.test(newDoctor.phone_number)) {
+      newErrors.phone_number = 'Format: 963 90 000 0000';
     }
 
     if (newDoctor.experience_years && (isNaN(newDoctor.experience_years) || newDoctor.experience_years < 0)) {
@@ -1841,10 +1924,9 @@ const AdminDashboard = () => {
 
       const response = await api.post('/doctors', formData);
 
-      console.log('Doctor added:', response.data);
-      addNotification('Doctor added successfully!', 'success');
-      closeModal();
-      fetchDoctors(1);
+addNotification(`Doctor added successfully! Password: ${response.data.generated_password}`, 'success', 0);
+closeModal();
+fetchDoctors(1);
 
     } catch (error) {
       console.error('Error adding doctor:', error);
@@ -1879,8 +1961,14 @@ const AdminDashboard = () => {
   };
 
   const handleDoctorUpdate = (updatedDoctor) => {
-  
-    window.location.reload();
+    setDoctorsData(prev => 
+      prev.map(doc => doc.id === updatedDoctor.id ? updatedDoctor : doc)
+    );
+    setAllDoctorsForStats(prev => 
+      prev.map(doc => doc.id === updatedDoctor.id ? updatedDoctor : doc)
+    );
+    setSelectedDoctor(updatedDoctor);
+    addNotification('Doctor updated successfully!', 'success');
   };
 
   const handleDeleteDoctor = async (doctorId) => {
@@ -1888,7 +1976,7 @@ const AdminDashboard = () => {
       await api.delete(`/doctors/${doctorId}`);
 
       setDoctorsData(prev => prev.filter(d => d.id !== doctorId));
-      await fetchDoctors(1);
+      setAllDoctorsForStats(prev => prev.filter(d => d.id !== doctorId));
 
       setShowDoctorProfile(false);
       setSelectedDoctor(null);
@@ -1897,7 +1985,16 @@ const AdminDashboard = () => {
 
     } catch (error) {
       console.error('Failed to delete doctor:', error);
-      addNotification('Failed to delete doctor', 'error');
+
+      if (error.response?.status === 404) {
+        addNotification('Doctor already deleted or not found', 'info');
+        setDoctorsData(prev => prev.filter(d => d.id !== doctorId));
+        setAllDoctorsForStats(prev => prev.filter(d => d.id !== doctorId));
+        setShowDoctorProfile(false);
+        setSelectedDoctor(null);
+      } else {
+        addNotification('Failed to delete doctor', 'error');
+      }
     }
   };
 
@@ -2451,7 +2548,7 @@ const DashboardTab = () => {
             title="Daily Revenue" 
             value={`$${stats.dailyRevenue.toLocaleString('en-US')}`} 
             sub={`Clinic Profit: $${(stats.dailyRevenue * 0.6).toLocaleString('en-US')}`}
-            progress={60} 
+            progress={stats.dailyRevenue > 0 ? Math.min((stats.dailyRevenue / 1000) * 100, 100) : 0} 
             icon="fa-money-bill-transfer" 
             color="orange" 
           />
@@ -5216,9 +5313,9 @@ import React from 'react';
 const ParentCard = ({ parent, onClick }) => {
   const fullName = `${parent.first_name || ''} ${parent.last_name || ''}`.trim() || 'No Name';
 
-  const childrenCount = typeof parent.children_count === 'number'
-    ? parent.children_count
-    : (Array.isArray(parent.children) ? parent.children.length : 0);
+  const childrenCount = Array.isArray(parent.children)
+    ? parent.children.length
+    : (typeof parent.children_count === 'number' ? parent.children_count : 0);
 
   const formatPhone = (phone) => {
     if (!phone) return 'No phone';
@@ -6959,7 +7056,7 @@ export default function ParentsTab() {
       setLoading(true);
       setError(null);
       const response = await api.get('/parents/profiles');
-      
+
       if (response.data && response.data.users) {
         setParents(response.data.users);
       } else {
@@ -6982,16 +7079,21 @@ export default function ParentsTab() {
   };
 
   const handleUpdateSuccess = (updatedParent) => {
-    setParents(prev => prev.map(p =>
-      p.id === updatedParent.id
-        ? { ...p, ...updatedParent }
-        : p
-    ));
+    setParents(prev => prev.map(p => {
+      if (p.id === updatedParent.id) {
+        return {
+          ...p,
+          ...updatedParent,
+          children: updatedParent.children || p.children,
+          children_count: updatedParent.children_count ?? p.children_count ?? (Array.isArray(p.children) ? p.children.length : 0)
+        };
+      }
+      return p;
+    }));
   };
 
   const handleModalClose = () => {
     setSelectedParentId(null);
-    fetchParents();
   };
 
   const filteredParents = parents.filter(p => {
