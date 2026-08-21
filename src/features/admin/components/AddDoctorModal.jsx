@@ -1,15 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const getInitialDoctors = () => {
-  const saved = localStorage.getItem('kidcare_doctors');
-  return saved ? JSON.parse(saved) : [];
-};
-
-const saveDoctors = (doctors) => {
-  localStorage.setItem('kidcare_doctors', JSON.stringify(doctors));
-};
-
 const departmentsData = [
   { id: 1, name: 'Pediatrics' },
   { id: 2, name: 'Dentistry' },
@@ -50,14 +41,14 @@ const AddDoctorModal = ({
   return (
     <AnimatePresence>
       {showAddDoctorModal && (
-        <motion.div 
+        <motion.div
           className="modal-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={closeModal}
         >
-          <motion.div 
+          <motion.div
             className="modal-content"
             initial={{ scale: 0.8, y: 50, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -258,8 +249,8 @@ const AddDoctorModal = ({
                         <span>{newDoctor.profile_picture ? newDoctor.profile_picture.name : 'Upload Photo'}</span>
                       </label>
                       {newDoctor.profile_picture && (
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="file-clear"
                           onClick={() => handleInputChange({ target: { name: 'profile_picture', value: null, type: 'file' } })}
                         >
@@ -289,8 +280,8 @@ const AddDoctorModal = ({
                         <span>{newDoctor.cv ? newDoctor.cv.name : 'Upload CV'}</span>
                       </label>
                       {newDoctor.cv && (
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="file-clear"
                           onClick={() => handleInputChange({ target: { name: 'cv', value: null, type: 'file' } })}
                         >
@@ -308,8 +299,8 @@ const AddDoctorModal = ({
                 <button type="button" className="btn-cancel" onClick={closeModal}>
                   Cancel
                 </button>
-                <motion.button 
-                  type="submit" 
+                <motion.button
+                  type="submit"
                   className="btn-submit"
                   disabled={isSubmitting}
                   whileHover={{ scale: 1.02 }}
@@ -336,5 +327,69 @@ const AddDoctorModal = ({
   );
 };
 
+const GeneratedPasswordModal = ({ show, password, onClose }) => {
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(password);
+  };
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="modal-content password-modal"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+          >
+            <div className="modal-header">
+              <h2>Doctor Account Created</h2>
+              <p>Temporary password — save it now, it will not be shown again</p>
+            </div>
+
+            <div className="modal-body">
+              <div className="password-display">
+                <code>{password}</code>
+                <button type="button" onClick={copyToClipboard}>
+                  <i className="fa-solid fa-copy"></i> Copy
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn-submit" onClick={onClose}>
+                Got it, Close
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const buildDoctorFormData = (newDoctor) => {
+  const formData = new FormData();
+  formData.append('first_name', newDoctor.first_name);
+  formData.append('last_name', newDoctor.last_name);
+  formData.append('email', newDoctor.email);
+  formData.append('phone_number', newDoctor.phone_number);
+  formData.append('address', newDoctor.address);
+  formData.append('experience_years', newDoctor.experience_years);
+  formData.append('education', newDoctor.education);
+  formData.append('department_id', newDoctor.department_id);
+  formData.append('fee', newDoctor.fee);
+  formData.append('commission_percentage', newDoctor.commission_percentage);
+  formData.append('gender', newDoctor.gender);
+  if (newDoctor.profile_picture) formData.append('profile_picture', newDoctor.profile_picture);
+  if (newDoctor.cv) formData.append('cv', newDoctor.cv);
+  return formData;
+};
+
 export default AddDoctorModal;
-export { getInitialDoctors, saveDoctors };
+export { GeneratedPasswordModal, buildDoctorFormData };

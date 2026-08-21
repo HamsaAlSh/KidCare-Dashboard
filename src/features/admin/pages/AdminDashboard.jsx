@@ -198,11 +198,13 @@ const AdminDashboard = () => {
     fetchDepartments();
   }, []);
 
-  const addNotification = useCallback((message, type = 'success') => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
-  }, []);
+  const addNotification = useCallback((message, type = 'success', duration = 4000) => {
+  const id = Date.now();
+  setNotifications(prev => [...prev, { id, message, type }]);
+  if (duration > 0) {
+    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), duration);
+  }
+}, []);
 
   const validateDoctorForm = () => {
     const newErrors = {};
@@ -325,10 +327,9 @@ const AdminDashboard = () => {
 
       const response = await api.post('/doctors', formData);
 
-      console.log('Doctor added:', response.data);
-      addNotification('Doctor added successfully!', 'success');
-      closeModal();
-      fetchDoctors(1);
+addNotification(`Doctor added successfully! Password: ${response.data.generated_password}`, 'success', 0);
+closeModal();
+fetchDoctors(1);
 
     } catch (error) {
       console.error('Error adding doctor:', error);

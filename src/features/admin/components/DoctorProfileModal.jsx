@@ -17,7 +17,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     if (doctor.profile_picture.startsWith('http')) {
       return doctor.profile_picture;
     }
-    return `https://kidcare.sy/storage/${doctor.profile_picture}`;
+    return `https://kidcare.sy/${doctor.profile_picture}`;
   };
 
   const getCvUrl = () => {
@@ -25,7 +25,7 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
     if (doctor.cv.startsWith('http')) {
       return doctor.cv;
     }
-    return `https://kidcare.sy/storage/${doctor.cv}`;
+    return `https://kidcare.sy/${doctor.cv}`;
   };
 
   const getAvatarLetters = () => {
@@ -163,20 +163,20 @@ const DoctorProfileModal = ({ show, doctor, onClose, onDelete, onUpdate }) => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete Dr. ' + doctor.full_name + '?')) {
-      return;
-    }
+  if (!window.confirm('Are you sure you want to delete Dr. ' + doctor.full_name + '?')) {
+    return;
+  }
 
-    setIsDeleting(true);
-    try {
-      onDelete?.(doctor.id);
-      onClose();
-    } catch (error) {
-      alert('Error: ' + (error.response?.data?.message || error.message));
-      setIsDeleting(false);
-    }
-  };
-
+  setIsDeleting(true);
+  try {
+    await onDelete?.(doctor.id);
+    onClose();
+  } catch (error) {
+    alert('Error: ' + (error.response?.data?.message || error.message));
+  } finally {
+    setIsDeleting(false);
+  }
+};
   const imageUrl = getImageUrl();
   const showImage = imageUrl && !imgError;
 
