@@ -75,7 +75,7 @@ const generateInsights = (doctorsData = [], departmentsData = [], ageDistributio
       insights.push({
         id: 'profit-margin-high',
         type: 'success',
-        icon: 'fa-sack-dollar',
+        icon: 'fa-wallet',
         color: '#66BB6A',
         title: 'Excellent Profit Margin',
         message: `Current profit margin is ${profitMargin.toFixed(1)}%.`,
