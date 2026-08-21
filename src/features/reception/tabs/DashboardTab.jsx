@@ -243,12 +243,7 @@ export default function DashboardTab() {
 
   useEffect(() => {
     fetchDashboardData();
-
-    intervalRef.current = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
-
-    return () => {
+  return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
