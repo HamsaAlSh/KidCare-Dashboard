@@ -282,16 +282,7 @@ const StatisticsTab = ({ selectedDoctorId, setSelectedDoctorId }) => {
     <motion.div className="page-content" variants={containerVariants} initial="hidden" animate="visible">
     
       <motion.div className="manager-insights-grid" variants={itemVariants}>
-        <motion.div className="insight-card" whileHover={{ y: -3 }}>
-          <div className="insight-icon" style={{ background: '#E8F5E9', color: '#66BB6A' }}>
-            <i className="fa-solid fa-door-open"></i>
-          </div>
-          <div className="insight-content">
-            <h4>Weekly Appointments</h4>
-            <p className="insight-value">{weeklySummary?.total_confirmed_and_completed || 0}</p>
-            <small>This week's total</small>
-          </div>
-        </motion.div>
+        
         <motion.div className="insight-card" whileHover={{ y: -3 }}>
           <div className="insight-icon" style={{ background: '#E1F5FE', color: '#4FC3F7' }}>
             <i className="fa-solid fa-users"></i>
